@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(perception)
 
+add_compile_options(-std=c++11)
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
@@ -155,6 +157,7 @@ add_executable(pcl_viewer src/pcl_viewer.cpp)
 add_executable(pcl_icp src/pcl_icp.cpp)
 add_executable(pcl_align_tutorial src/pcl_align_tutorial.cpp)
 add_executable(pcl_passthrough_filter src/pcl_passthrough_filter.cpp)
+add_executable(pcl_cropbox_filter src/pcl_cropbox_filter.cpp)
 
 
 
@@ -176,8 +179,11 @@ target_link_libraries(pcl_icp ${catkin_LIBRARIES}
 target_link_libraries(pcl_align_tutorial ${catkin_LIBRARIES}	
   ${PCL_LIBRARIES})
 
-  target_link_libraries(pcl_passthrough_filter ${catkin_LIBRARIES}	
-    ${PCL_LIBRARIES})
+target_link_libraries(pcl_passthrough_filter ${catkin_LIBRARIES}	
+  ${PCL_LIBRARIES})
+
+target_link_libraries(pcl_cropbox_filter ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -5,7 +5,7 @@
 //                                                                                                                        
 // Armin Niedermüller
 //
-// PCL_PASSTHROUGH_FILTER - Filters Points outside a certain threshold
+// PCL_CROPBOX_FILTER - Filters Points outside a certain threshold
 //
 
 #include <iostream>
@@ -19,8 +19,8 @@
 #include	<pcl_conversions/pcl_conversions.h>	
 #include	<sensor_msgs/PointCloud2.h>	
 #include    <pcl/io/pcd_io.h>
-#include    <pcl/filters/passthrough.h>
-#include <pcl/common/transforms.h>
+#include    <pcl/filters/crop_box.h>
+#include    <pcl/common/transforms.h>
 
 
 
@@ -29,11 +29,11 @@
 	
 main(int	argc,	char**	argv) {	
 
-    ros::init(argc,	argv,	"pcl_passthrough");	
-    std::cout << "PCL Passthrough Filter" << std::endl;
+    ros::init(argc,	argv,	"pcl_cropbox");	
+    std::cout << "PCL Cropbox Filter" << std::endl;
 
     if (argc < 2){
-        std::cout << "Usage: " << "pcl_passthrough <pointcloud.pcd> <z-distance>" << std::endl;
+        std::cout << "Usage: " << "pcl_cropbox <input_file.pcd> <minX> <minY> <minZ> <maxX> <maxY> <maxZ>" << std::endl;
         return -1;
     }
 
@@ -50,27 +50,24 @@ main(int	argc,	char**	argv) {
         return (-1);
     }
 
-    // Filtering
-    pcl::PassThrough<pcl::PointXYZ> pass_z;
-    pass_z.setInputCloud (cloud);
-    pass_z.setFilterFieldName ("z");
-    pass_z.setFilterLimits (0.5, atof(argv[2]));
-    //pass.setFilterLimitsNegative (true);
-    pass_z.filter (cloud_filtered);
-
+    pcl::CropBox<pcl::PointXYZ> boxFilter;
+    boxFilter.setMin(Eigen::Vector4f(atof(argv[2]), atof(argv[3]), atof(argv[4]), 1.0));      // X Y Z    //Cloud 1: -0.5, -6, 0.5, 1.0   //Cloud 2:       2, -6, 0.5, 1.0
+    boxFilter.setMax(Eigen::Vector4f(atof(argv[5]), atof(argv[6]), atof(argv[7]), 1.0));      // X Y Z    //Cloud 1:    2,  6, 2.3, 1.0   //Cloud 2:    -0.5,  6, 2.3, 1.0
+    boxFilter.setInputCloud(cloud);
+    boxFilter.filter(cloud_filtered);
 
     // Give the output file a proper name 
     std::string output_file = argv[1];
     output_file = output_file.substr (0,output_file.length()-4);
-    output_file+="_passthrough_filtered_z";
-    output_file+=argv[2];
+    output_file+="_cropbox_filtered";
     output_file+=".pcd";
+
 
     // Save the PointClouds into a file
     pcl::io::savePCDFileASCII(output_file, cloud_filtered);
 
 
-    std::cout << "finished - Pointclouds filtered with passthrough filter and a value of z-max: " << argv[2] << std::endl;
+    std::cout << "finished - Pointclouds filtered cropbox filter " << std::endl;
 
     return	0;	
 }	
