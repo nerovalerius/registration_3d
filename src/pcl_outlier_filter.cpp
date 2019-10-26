@@ -11,11 +11,11 @@
 	
 main(int	argc,	char**	argv) {	
 
-    ros::init(argc,	argv,	"pcl_passthrough");	
-    std::cout << "PCL Passthrough Filter" << std::endl;
+    ros::init(argc,	argv,	"pcl_outlier_filter");	
+    std::cout << "PCL Outlier Filter" << std::endl;
 
     if (argc < 2){
-        std::cout << "Usage: " << "pcl_passthrough <pointcloud.pcd> <z-distance>" << std::endl;
+        std::cout << "Usage: " << "pcl_outlier_filter <pointcloud.pcd>" << std::endl;
         return -1;
     }
 
@@ -51,7 +51,7 @@ main(int	argc,	char**	argv) {
     pcl::io::savePCDFileASCII(output_file, cloud_filtered);
 
 
-    std::cout << "finished - Pointclouds filtered with passthrough filter and a value of z-max: " << argv[2] << std::endl;
+    std::cout << "finished - Pointclouds outlier filtered " << std::endl;
 
     return	0;	
 }	

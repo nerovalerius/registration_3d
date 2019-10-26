@@ -155,10 +155,13 @@ add_executable(pcl_outlier_filter src/pcl_outlier_filter.cpp)
 add_executable(pcl_framesaver src/pcl_framesaver.cpp)
 add_executable(pcl_viewer src/pcl_viewer.cpp)
 add_executable(pcl_icp src/pcl_icp.cpp)
-add_executable(pcl_align_tutorial src/pcl_align_tutorial.cpp)
+add_executable(pcl_ICP_nonlinear src/pcl_ICP_nonlinear.cpp)
 add_executable(pcl_passthrough_filter src/pcl_passthrough_filter.cpp)
 add_executable(pcl_cropbox_filter src/pcl_cropbox_filter.cpp)
-
+add_executable(pcl_ICP src/pcl_ICP.cpp)
+add_executable(pcl_gICP src/pcl_gICP.cpp)
+add_executable(pcl_ICP_normals src/pcl_ICP_normals.cpp)
+add_executable(pcl_initial_transformation src/pcl_initial_transformation.cpp)
 
 
 target_link_libraries(pcl_generator	${catkin_LIBRARIES}	
@@ -176,7 +179,7 @@ target_link_libraries(pcl_viewer ${catkin_LIBRARIES}
 target_link_libraries(pcl_icp ${catkin_LIBRARIES}	
   ${PCL_LIBRARIES})
 
-target_link_libraries(pcl_align_tutorial ${catkin_LIBRARIES}	
+target_link_libraries(pcl_ICP_nonlinear ${catkin_LIBRARIES}	
   ${PCL_LIBRARIES})
 
 target_link_libraries(pcl_passthrough_filter ${catkin_LIBRARIES}	
@@ -185,6 +188,17 @@ target_link_libraries(pcl_passthrough_filter ${catkin_LIBRARIES}
 target_link_libraries(pcl_cropbox_filter ${catkin_LIBRARIES}	
 ${PCL_LIBRARIES})
 
+target_link_libraries(pcl_ICP ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
+
+target_link_libraries(pcl_gICP ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
+
+target_link_libraries(pcl_ICP_normals ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
+
+target_link_libraries(pcl_initial_transformation ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

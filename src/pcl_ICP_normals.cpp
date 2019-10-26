@@ -41,23 +41,23 @@
 /* \author Radu Bogdan Rusu
  * adaptation Raphael Favier*/
 
+#include <boost/make_shared.hpp>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_representation.h>
 #include <pcl/point_types.h>
-#include <boost/make_shared.hpp>
-
 #include <pcl/io/pcd_io.h>
-
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
-
 #include <pcl/features/normal_3d.h>
-
 #include <pcl/registration/icp.h>
+#include <pcl/registration/gicp.h>
+#include <pcl/registration/joint_icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
-
+#include <pcl/registration/default_convergence_criteria.h>
 #include <pcl/visualization/pcl_visualizer.h>
+
 
 using pcl::visualization::PointCloudColorHandlerCustom;
 using pcl::visualization::PointCloudColorHandlerGenericField;
@@ -232,13 +232,22 @@ void pairAlign(const PointCloud::Ptr cloud_src,
   float alpha[4] = {1.0, 1.0, 1.0, 1.0};
   point_representation.setRescaleValues(alpha);
 
-  //
-  // Align
-  pcl::IterativeClosestPointNonLinear<PointNormalT, PointNormalT> reg;
+
+  // Iterative Closest Point Algorithm
+  // pcl::IterativeClosestPointNonLinear<PointNormalT, PointNormalT> reg;
+  // pcl::GeneralizedIterativeClosestPoint<PointNormalT, PointNormalT> reg;
+  // pcl::IterativeClosestPoint< PointNormalT, PointNormalT > reg;
+  pcl::IterativeClosestPointWithNormals< PointNormalT, PointNormalT> reg;
+  //pcl::JointIterativeClosestPoint< PointNormalT, PointNormalT > reg;
+  // pcl::registration::IncrementalICP< PointT, Scalar > Class Template Reference
+
+
+
+
   reg.setTransformationEpsilon(1e-6);
   // Set the maximum distance between two correspondences (src<->tgt) to 10cm
   // Note: adjust this based on the size of your datasets
-  reg.setMaxCorrespondenceDistance(0.1);
+  reg.setMaxCorrespondenceDistance(0.3);
   // Set the point representation
   reg.setPointRepresentation(boost::make_shared<const MyPointRepresentation>(point_representation));
 
