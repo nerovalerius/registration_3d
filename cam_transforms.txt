@@ -7,7 +7,7 @@
 
 # transformation of cam_2_link to cam_1_link - overlap both camera images
 python ~/collab_assembly_ws/src/realsense-ros/realsense2_camera/scripts/set_cams_transforms.py cam_1_link cam_2_link 1.05 0.1063 -1.6655 -3.5 -69 187
-rosrun tf static_transform_publisher 1.05 0.1063 -1.6655 0.823261333158 0.00944150005205 0.566622535324 -0.0330232927942 cam_2_link cam_1_link 9
+rosrun tf static_transform_publisher 1.05 0.1063 -1.6655 0.823261333158 0.00944150005205 0.566622535324 -0.0330232927942 world_frame cam_2_link 9
 
 # transformation of cam_1_link and cam_2_link combined to world_frame
 python ~/collab_assembly_ws/src/realsense-ros/realsense2_camera/scripts/set_cams_transforms.py world_frame cam_1_link 1 0 2.9 9.5 -233 11
