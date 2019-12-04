@@ -6,8 +6,8 @@
 # and tf publish orders
 
 # transformation of cam_2_link to cam_1_link - overlap both camera images
-python ~/collab_assembly_ws/src/realsense-ros/realsense2_camera/scripts/set_cams_transforms.py cam_1_link cam_2_link 1.05 0.1063 -1.6655 -3.5 -69 187
-rosrun tf static_transform_publisher 1.05 0.1063 -1.6655 0.823261333158 0.00944150005205 0.566622535324 -0.0330232927942 world_frame cam_2_link 9
+python ~/collab_assembly_ws/src/realsense-ros/realsense2_camera/scripts/set_cams_transforms.py world_frame cam_2_link -0.925 0.1563 3.022 X X X 
+rosrun tf static_transform_publisher -0.925 0.1563 3.022 -0.877438110987 0.0948478796321 0.46937536655 0.028160369202 world_frame cam_2_link 9
 
 # transformation of cam_1_link and cam_2_link combined to world_frame
 python ~/collab_assembly_ws/src/realsense-ros/realsense2_camera/scripts/set_cams_transforms.py world_frame cam_1_link 1 0 2.9 9.5 -233 11
@@ -16,7 +16,24 @@ rosrun tf static_transform_publisher 1.0 0.0 2.9 0.0311474473239 -0.891296151451
 
 # output of rostopic echo /tf_static (must be running after call of the python programs)
 
-transforms: 
+transforms:   - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1574945639
+        nsecs:  46377897
+      frame_id: "world_frame"
+    child_frame_id: "cam_2_link"
+    transform: 
+      translation: 
+        x: -0.925
+        y: 0.1563
+        z: 3.022
+      rotation: 
+        x: -0.877438110987
+        y: 0.0948478796321
+        z: 0.46937536655
+        w: 0.028160369202
   - 
     header: 
       seq: 0
