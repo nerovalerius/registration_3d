@@ -162,6 +162,7 @@ add_executable(pcl_ICP src/pcl_ICP.cpp)
 add_executable(pcl_gICP src/pcl_gICP.cpp)
 add_executable(pcl_ICP_normals src/pcl_ICP_normals.cpp)
 add_executable(pcl_initial_transformation src/pcl_initial_transformation.cpp)
+add_executable(preprocess_align_publish src/preprocess_align_publish.cpp)
 
 
 target_link_libraries(pcl_generator	${catkin_LIBRARIES}	
@@ -200,7 +201,8 @@ ${PCL_LIBRARIES})
 target_link_libraries(pcl_initial_transformation ${catkin_LIBRARIES}	
 ${PCL_LIBRARIES})
 
-
+target_link_libraries(preprocess_align_publish ${catkin_LIBRARIES}	
+${PCL_LIBRARIES})
 
 
 ## Rename C++ executable without prefix

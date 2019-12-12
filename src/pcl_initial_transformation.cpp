@@ -70,10 +70,8 @@ int grad = -45;
     transform(2,2) = cos(grad*M_PI / 180);
     transform(3,3) = 1;
 
-
     pcl::PointCloud<pcl::PointXYZ> transformedCloud;
     pcl::transformPointCloud (*cloud_1, transformedCloud, transform);
-
 
     grad = 180;
     Eigen::Matrix4f transformZ = Eigen::Matrix4f::Identity();
@@ -86,7 +84,7 @@ int grad = -45;
     transformZ(3,3) = 1;
 
     pcl::PointCloud<pcl::PointXYZ> transformedCloud_z;
-   pcl::transformPointCloud (transformedCloud, transformedCloud_z, transformZ);
+    pcl::transformPointCloud (transformedCloud, transformedCloud_z, transformZ);
 
 
     // Give the output file a proper name 
