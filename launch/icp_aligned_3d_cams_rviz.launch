@@ -13,6 +13,18 @@
         <arg name="serial_no" value="843112072743"/>
         <arg name="filters" value="spatial,temporal,pointcloud"/>
     </include>  
+
+    <!-- Extract two pointclouds directly from the Pointcloud topics -->
+
+    <!-- Apply Passthrough filter with Z Distance of 2.2 on cam_1 -->
+
+    <!-- Apply Passthrough filter with Z Distance of 2 on cam_2 -->
+
+    <!-- Apply Outlier filter on both camera images -->
+
+    <!-- Perform initial transformation X-rotation -45° - Z-rotation 180° on cam_1 -->
+    
+    <!-- Perform nonlinear ICP and extract rotation matrix -->
     
     <!-- Perform coordinate transform from cam_2_link relative to world frame -->
     <node type="static_transform_publisher" name="static_transform_cam_2_cam_1" pkg="tf" args="-0.925 0.1563 3.022 -0.877438110987 0.0948478796321 0.46937536655 0.028160369202 world_frame cam_2_link 9" />
