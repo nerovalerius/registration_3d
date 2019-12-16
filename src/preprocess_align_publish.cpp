@@ -93,6 +93,10 @@ int main(int argc, char **argv)
     args.push_back(std::string(argv[i]));
   }
 
+  // Output
+  std::cout << "STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS" << std::endl;
+
+
   for (const auto &arg : args)
   {
     // User needs HELP
@@ -115,6 +119,7 @@ int main(int argc, char **argv)
         // ------------------------------------------------------
         //  STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS
         // ------------------------------------------------------
+        
 
         // Arguments are point cloud streams? usually contain "points" in their path
         if (arg.find("points") != std::string::npos)
@@ -137,18 +142,19 @@ int main(int argc, char **argv)
     }
   }
 
-  // Output
-  std::cout << "Finished STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS" << std::endl;
 
   // ------------------------------------------------------
   //  STEP 2 - PASSTHROUGH_FILTER
   // ------------------------------------------------------
 
+  // Output
+  std::cout << "STEP 2 - PASSTHROUGH_FILTER" << std::endl;
+
   // Configure the filter
   pcl::PassThrough<pcl::PointXYZ> passthrough_filter;
   passthrough_filter.setFilterFieldName("z");
-  // Set filter from 0.5m to 2.2m
-  passthrough_filter.setFilterLimits(0.5, 2.2);
+  // Set filter from 0.5m to 2.1m
+  passthrough_filter.setFilterLimits(0.5, 2.1);
 
   // Apply passthrough filter
   for (auto &cloud : clouds)
@@ -157,12 +163,13 @@ int main(int argc, char **argv)
     passthrough_filter.filter(*cloud);
   }
 
-  // Output
-  std::cout << "Finished STEP 2 - PASSTHROUGH_FILTER" << std::endl;
 
   // ------------------------------------------------------
   //  STEP 3 - REMOVE OUTLIERS
   // ------------------------------------------------------
+
+  // Output
+  std::cout << "STEP 3 - REMOVE OUTLIERS" << std::endl;
 
   // Configure the filter
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> outlier_filter;
@@ -176,12 +183,13 @@ int main(int argc, char **argv)
     outlier_filter.filter(*cloud);
   }
 
-  // Output
-  std::cout << "Finished STEP 3 - REMOVE OUTLIERS" << std::endl;
 
   // ------------------------------------------------------
   //  STEP 4 - DOWNSAMPLING
   // ------------------------------------------------------
+
+  // Output
+  std::cout << "STEP 4 - DOWNSAMPLING" << std::endl;
 
   // Downsampling of the point clouds using a voxelgrid filter
   // significantly reduces computing time in the next steps
@@ -197,12 +205,13 @@ int main(int argc, char **argv)
     voxelgrid_filter.filter(*cloud);
   }
 
-  // Output
-  std::cout << "Finished STEP 4 - DOWNSAMPLING" << std::endl;
 
   // ------------------------------------------------------
   //  STEP 5 - SMOOTH SURFACES
   // ------------------------------------------------------
+
+  // Output
+  std::cout << "STEP 5 - SMOOTHE SURFACES" << std::endl;
 
   // Pointcloud Vector with normals
   std::vector<pcl::PointCloud<pcl::PointNormal>> smoothed_clouds;
@@ -227,12 +236,13 @@ int main(int argc, char **argv)
     smoothed_clouds.push_back(smoothed_cloud);
   }
 
-  // Output
-  std::cout << "Finished STEP 5 - SMOOTHE SURFACES" << std::endl;
 
   // ------------------------------------------------------
   //  STEP 6 - COARSE MANUAL ALIGNMENT
   // ------------------------------------------------------
+
+  // Output
+  std::cout << "STEP 6 - COARSE MANUAL ALIGNMENT" << std::endl;
 
   // Rotation Matrices
   Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
@@ -266,15 +276,13 @@ int main(int argc, char **argv)
   // Apply 180 rotation - Z axis
   pcl::transformPointCloud(smoothed_clouds.at(0), smoothed_clouds.at(0), transform_z);
 
-  // Output
-  std::cout << "Finished STEP 6 - COARSE MANUAL ALIGNMENT" << std::endl;
-
-  // pcl::io::savePCDFileASCII("./cam_1.pcd", smoothed_clouds.at(0));
-  // pcl::io::savePCDFileASCII("./cam_2.pcd", smoothed_clouds.at(1));
 
   // ------------------------------------------------------
   //  STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM
   // ------------------------------------------------------
+
+  // Output
+  std::cout << "STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM\n" << std::endl;
 
   //Points with x, y, z, curvature
   PointCurvature point_xyzc;
@@ -284,6 +292,7 @@ int main(int argc, char **argv)
 
   // Configure the ICP algorithm
   pcl::IterativeClosestPointNonLinear<pcl::PointNormal, pcl::PointNormal> icp_nonlinear;
+
   // Maximum distance between two point correspondences - 0.000001 = 10cm
   icp_nonlinear.setTransformationEpsilon(1e-6);
   icp_nonlinear.setMaxCorrespondenceDistance(0.3);
@@ -291,6 +300,7 @@ int main(int argc, char **argv)
   // Set PointXYZC as representation inside the registration method
   icp_nonlinear.setPointRepresentation(boost::make_shared<const PointCurvature>(point_xyzc));
 
+  // icp needs shared ptrs
   auto source = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(smoothed_clouds.at(0));
   auto target = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>(smoothed_clouds.at(1));
 
@@ -302,46 +312,58 @@ int main(int argc, char **argv)
   Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
   Eigen::Matrix4f prev;
 
-  auto result_cloud = source;
+  // New Pointcloud for transformed source cloud
+  auto source_transformed = source;
+
+  // set max iterations per loop
   icp_nonlinear.setMaximumIterations(2);
+  
+  // Iterate two times each loop 
   for (int i = 0; i < 30; ++i)
   {
-    PCL_INFO("Iteration Nr. %d.\n", i);
 
-    // save cloud for visualization purpose
-    source = result_cloud;
-
-    // Estimate
+    // Estimate the next transformation Ti (only 2 iterations)
     icp_nonlinear.setInputSource(source);
-    icp_nonlinear.align(*result_cloud);
+    icp_nonlinear.align(*source_transformed);
 
-    // accumulate transformation between each Iteration
+    // Accumulate transformation between each Iteration
     T = icp_nonlinear.getFinalTransformation() * T;
 
-    // if the difference between this transformation and the previous one
-    // is smaller than the threshold, refine the process by reducing
-    // the maximal correspondence distance
+    // reduce distance between correspondending points each time, the resulting transformation Ti is smaller then threshold
     if (std::abs((icp_nonlinear.getLastIncrementalTransformation() - prev).sum()) < icp_nonlinear.getTransformationEpsilon())
     {
       icp_nonlinear.setMaxCorrespondenceDistance(icp_nonlinear.getMaxCorrespondenceDistance() - 0.001);
     }
+
+    // T(i-1) 
     prev = icp_nonlinear.getLastIncrementalTransformation();
+
   }
 
   // Fitness Score
   double fitness_score;
-
   fitness_score = icp_nonlinear.getFitnessScore();
+  std::cout << "\nFitness Score: " << fitness_score << std::endl;
+
+
+  // Final Transformation
+  //std::cout << "\nFinal Transformation:\n" << T << std::endl;
+  std::cout << "\nFinal Transformation:\n" << T << "\n" << std::endl;
+
+
+  // Concatenate both point clouds
+  *source_transformed += *target;
+
+  // Write aligned cloud to file
+  pcl::io::savePCDFileASCII("./aligned_cloud.pcd", *source_transformed);
 
   // ------------------------------------------------------
   //  STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
   // ------------------------------------------------------
 
   // Output
-  std::cout << "Finished STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM\n"
-            << std::endl;
-  std::cout << T << std::endl;
-  std::cout << "\nFitness Score: " << fitness_score << std::endl;
+  std::cout << "STEP 8 - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n" << std::endl;
+
 
   // ------------------------------------------------------
   //  END
