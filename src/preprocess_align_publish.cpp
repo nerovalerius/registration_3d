@@ -27,6 +27,12 @@
 #include <ros/ros.h>
 #include <ros/topic.h>
 #include <ros/console.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2/LinearMath/Quaternion.h> 
+
 #include <sensor_msgs/PointCloud2.h>
 
 // Nonlinear ICP also uses curvature - crete own Point class with x, y, z, curvature
@@ -76,6 +82,8 @@ int main(int argc, char **argv)
   // ROS NODE
   ros::init(argc, argv, "preprocess_align_publish");
   std::cout << "PREPROCESS_ALIGN_PUBLISH" << std::endl;
+
+
 
   // ------------------------------------------------------
   //  PROCESS ARGUMENTS
@@ -350,7 +358,6 @@ int main(int argc, char **argv)
   //std::cout << "\nFinal Transformation:\n" << T << std::endl;
   std::cout << "\nFinal Transformation:\n" << T << "\n" << std::endl;
 
-
   // Concatenate both point clouds
   *source_transformed += *target;
 
@@ -364,10 +371,43 @@ int main(int argc, char **argv)
   // Output
   std::cout << "STEP 8 - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n" << std::endl;
 
+  // Cast Matrix4f to Matrix4d
+  T.cast<double>();
+  
+  // Rotation Matrix
+  tf2::Matrix3x3 rotation_matrix;
+  rotation_matrix.setValue(T(0,0), T(0,1), T(0,2),
+                    T(1,0), T(1,1), T(1,2),
+                    T(2,0), T(2,1), T(2,2)
+  );
+
+  // Calculate Quaternions
+  tf2::Quaternion quaternion;
+  rotation_matrix.getRotation(quaternion);
+ 
+  // Broadcast to tf_static topic
+  static tf2_ros::StaticTransformBroadcaster static_broadcaster;
+  geometry_msgs::TransformStamped static_transform_stamped;
+  static_transform_stamped.header.stamp = ros::Time::now();
+  static_transform_stamped.header.frame_id = "cam_2_link";
+  static_transform_stamped.child_frame_id = "cam_1_link";
+
+  // Translation Vector
+  static_transform_stamped.transform.translation.x = T(0,3);
+  static_transform_stamped.transform.translation.y = T(1,3);
+  static_transform_stamped.transform.translation.z = T(2,3);
+  
+  // Rotation
+  static_transform_stamped.transform.rotation.x = quaternion.x();
+  static_transform_stamped.transform.rotation.y = quaternion.y();
+  static_transform_stamped.transform.rotation.z = quaternion.z();
+  static_transform_stamped.transform.rotation.w = quaternion.w();
+  static_broadcaster.sendTransform(static_transform_stamped);
 
   // ------------------------------------------------------
   //  END
   // ------------------------------------------------------
 
+  ros::spin();
   return 0;
 }
