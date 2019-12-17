@@ -1,6 +1,8 @@
 <launch>
-<node pkg="rosbag" type="play" name="rosbag_play_3d_cams" output="screen" args="--clock ~/bagfiles/rosbag.bag"/>
+    <!-- Perform coordinate transform from cam_2_link relative to world frame -->
     <node type="static_transform_publisher" name="static_transform_cam_2_cam_1" pkg="tf" args="-0.925 0.1563 3.022 -0.877438110987 0.0948478796321 0.46937536655 0.028160369202 world_frame cam_2_link 9" />
+    <!-- Perform coordinate transform from cam_1_link relative to world frame -->
     <node type="static_transform_publisher" name="static_transform_world_cam_1" pkg="tf" args="1.0 0.0 2.9 0.0311474473239 -0.891296151451 0.0487023250985 -0.449721125214 world_frame cam_1_link 9" />
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find perception)/config/both_3d_cams_manually_aligned.rviz" />
+    <!-- Start rviz with predefined config: added both Intel Pointcloud Streams and set world_frame as frame -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find perception)/config/man_aligned.rviz" />
 </launch>

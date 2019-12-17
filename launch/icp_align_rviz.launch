@@ -1,0 +1,6 @@
+<launch>
+    <!-- Start ICP Cascade - Get live pictures, preprocess them and publish on tf_static topic -->
+    <node type="preprocess_align_publish" name="preprocess_align_publish" pkg="perception" args="/cam_1/depth/color/points /cam_2/depth/color/points" />
+    <!-- Start rviz with predefined config: added both Intel Pointcloud Streams -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find perception)/config/icp_aligned.rviz" />
+</launch>

@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 
   // Configure the filter
   pcl::VoxelGrid<pcl::PointXYZ> voxelgrid_filter;
-  voxelgrid_filter.setLeafSize(0.02, 0.02, 0.02);
+  voxelgrid_filter.setLeafSize(0.015, 0.015, 0.015);
 
   // Apply voxel grid filter
   for (auto &cloud : clouds)
@@ -317,11 +317,11 @@ int main(int argc, char **argv)
   icp_nonlinear.setInputTarget(target);
 
   // Final Transformation
-  Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+  Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity();
   Eigen::Matrix4f prev;
 
   // New Pointcloud for transformed source cloud
-  auto source_transformed = source;
+  auto source_transformed(source);
 
   // set max iterations per loop
   icp_nonlinear.setMaximumIterations(2);
@@ -335,7 +335,7 @@ int main(int argc, char **argv)
     icp_nonlinear.align(*source_transformed);
 
     // Accumulate transformation between each Iteration
-    T = icp_nonlinear.getFinalTransformation() * T;
+    Ti = icp_nonlinear.getFinalTransformation() * Ti;
 
     // reduce distance between correspondending points each time, the resulting transformation Ti is smaller then threshold
     if (std::abs((icp_nonlinear.getLastIncrementalTransformation() - prev).sum()) < icp_nonlinear.getTransformationEpsilon())
@@ -355,14 +355,8 @@ int main(int argc, char **argv)
 
 
   // Final Transformation
-  //std::cout << "\nFinal Transformation:\n" << T << std::endl;
-  std::cout << "\nFinal Transformation:\n" << T << "\n" << std::endl;
+  std::cout << "\nFinal Transformation:\n" << Ti << "\n" << std::endl;
 
-  // Concatenate both point clouds
-  *source_transformed += *target;
-
-  // Write aligned cloud to file
-  pcl::io::savePCDFileASCII("./aligned_cloud.pcd", *source_transformed);
 
   // ------------------------------------------------------
   //  STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
@@ -371,8 +365,18 @@ int main(int argc, char **argv)
   // Output
   std::cout << "STEP 8 - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n" << std::endl;
 
-  // Cast Matrix4f to Matrix4d
-  T.cast<double>();
+  // Dont forget the coarse alignment from above!
+  Eigen::Matrix4f T = Ti * transform_z * transform_x;
+
+  // Transform cloud cam_1
+  //pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), T);
+
+  // Concatenate both point clouds
+  //*clouds.at(0) += *clouds.at(1);
+
+  // Write aligned cloud to file
+  //pcl::io::savePCDFileASCII("./aligned_cloud.pcd", *clouds.at(0));
+
   
   // Rotation Matrix
   tf2::Matrix3x3 rotation_matrix;
@@ -389,8 +393,8 @@ int main(int argc, char **argv)
   static tf2_ros::StaticTransformBroadcaster static_broadcaster;
   geometry_msgs::TransformStamped static_transform_stamped;
   static_transform_stamped.header.stamp = ros::Time::now();
-  static_transform_stamped.header.frame_id = "cam_2_link";
-  static_transform_stamped.child_frame_id = "cam_1_link";
+  static_transform_stamped.header.frame_id = "cam_2_depth_optical_frame";
+  static_transform_stamped.child_frame_id = "cam_1_depth_optical_frame";
 
   // Translation Vector
   static_transform_stamped.transform.translation.x = T(0,3);
@@ -402,6 +406,8 @@ int main(int argc, char **argv)
   static_transform_stamped.transform.rotation.y = quaternion.y();
   static_transform_stamped.transform.rotation.z = quaternion.z();
   static_transform_stamped.transform.rotation.w = quaternion.w();
+
+  // Broadcast Transformation to /tf ros topic
   static_broadcaster.sendTransform(static_transform_stamped);
 
   // ------------------------------------------------------
