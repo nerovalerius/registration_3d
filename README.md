@@ -1,4 +1,4 @@
-# Point Cloud Registration of two Intel D435i 3D Cameras with the Iterative Closest Point Algorithm 
+# Point Cloud Registration of two Intel D435i 3D-Cameras with the Iterative Closest Point Algorithm 
 Point Cloud Library, Robot Operating System, Intel D435
 
 ![alt text](https://repository-images.githubusercontent.com/215542871/3e9e6c00-24e2-11ea-9a2c-60b583b701e3)
@@ -6,40 +6,21 @@ Point Cloud Library, Robot Operating System, Intel D435
 ![alt text](https://i.ibb.co/W3w2vqp/4000-3000-max.jpg)
 
 
-## PCL-Cropbox Filter
-Usage: pcl_cropbox_filter <input_file.pcd> <minX> <minY> <minZ> <maxX> <maxY> <maxZ>
-rosrun perception pcl_cropbox_filter cam_1.pcd -0.5 -0.135 -0.5 2 6 2.3
-rosrun perception pcl_cropbox_filter cam_2.pcd -0.8 -0.2 0.5 0.5 0.5 2.5
+## launch/start_3d_cams.launch
+Starts both intel D435i ROS Nodes. Change serial numbers to your models.
 
-## PCL-Outlier Filter
-Usage pcl_outlier_filter <cloud.pcd>
-rosrun perception pcl_outlier_filter cam_1_cropbox_filtered.pcd
-rosrun perception pcl_outlier_filter cam_2_cropbox_filtered.pcd 
+## launch/icp_align_rviz.launch
+Start your two ROS PointCloud2 topics before this program is started. See launch/start_3d_cams.launch
 
-## PCL-Transform
-Usage pcl_initial_transform <input_file.pcd>
-rosrun perception pcl_initial_transformation cam_1_cropbox_filtered_outlier_filtered.pcd
+This launch file starts preprocess_align_publish, which consists of the following steps:
 
-## Iterative Closest Point
-Usage pcl_ICP_nonlinear <cloud_1.pcd> <cloud_2.pcd>
-rosrun perception pcl_ICP_nonlinear cam_1_cropbox_filtered_outlier_filtered_transformed.pcd cam_2_cropbox_filtered_outlier_filtered.pcd
+STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS
+STEP 2 - PASSTHROUGH_FILTER
+STEP 3 - REMOVE OUTLIERS
+STEP 4 - DOWNSAMPLING
+STEP 5 - SMOOTH SURFACES
+STEP 6 - COARSE MANUAL ALIGNMENT          <-- Applies a rotation in z and x. See preprocess_align_publish.cpp for angles.
+STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM
+STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
 
-
-
-# Working Procedure
-
-## Apply Passthrough filter with Z Distance of 2.2 on cam_1
-rosrun perception pcl_passthrough_filter cam_2.pcd 2.2
-
-## Apply Passthrough filter with Z Distance of 2 on cam_2
-rosrun perception pcl_passthrough_filter cam_1.pcd 2
-
-## Apply Outlier filter on both camera images
-rosrun perception pcl_outlier_filter cam_1_passthrough_filtered_z2.pcd 
-rosrun perception pcl_outlier_filter cam_2_passthrough_filtered_z2.2.pcd
-
-## Perform initial transformation X-rotation -45° - Z-rotation 180° on cam_1
-rosrun perception pcl_initial_transformation cam_1_passthrough_filtered_z2_outlier_filtered.pcd 
-
-## Perform nonlinear ICP
-rosrun perception pcl_ICP_nonlinear cam_1_passthrough_filtered_z2_outlier_filtered_transformed.pcd cam_2_passthrough_filtered_z2.2_outlier_filtered.pcd
+After that, rviz is loaded with a predefined config. Both cameras should be seen fully aligned inside rviz.
