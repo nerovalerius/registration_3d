@@ -14,13 +14,13 @@ Start your two ROS PointCloud2 topics before this program is started. See launch
 
 This launch file starts preprocess_align_publish, which consists of the following steps:
 
-STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS
-STEP 2 - PASSTHROUGH_FILTER
-STEP 3 - REMOVE OUTLIERS
-STEP 4 - DOWNSAMPLING
-STEP 5 - SMOOTH SURFACES
-STEP 6 - COARSE MANUAL ALIGNMENT          <-- Applies a rotation in z and x. See preprocess_align_publish.cpp for angles.
-STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM
-STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
+# STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS
+# STEP 2 - PASSTHROUGH_FILTER
+# STEP 3 - REMOVE OUTLIERS
+# STEP 4 - DOWNSAMPLING
+# STEP 5 - SMOOTH SURFACES
+# STEP 6 - COARSE MANUAL ALIGNMENT          <-- Applies a rotation in z and x. See preprocess_align_publish.cpp for angles.
+# STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM
+# STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
 
 After that, rviz is loaded with a predefined config. Both cameras should be seen fully aligned inside rviz.
