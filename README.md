@@ -14,13 +14,25 @@ Start your two ROS PointCloud2 topics before this program is started. See launch
 
 This launch file starts preprocess_align_publish, which consists of the following steps:
 
-STEP 1 - READ TWO POINTCLOUDS FROM TWO ROS TOPICS  
-STEP 2 - PASSTHROUGH_FILTER  
-STEP 3 - REMOVE OUTLIERS  
-STEP 4 - DOWNSAMPLING  
-STEP 5 - SMOOTH SURFACES  
-STEP 6 - COARSE MANUAL ALIGNMENT          <-- Applies a rotation in z and x. See preprocess_align_publish.cpp for angles.  
-STEP 7 - ITERATIVE CLOSEST POINT ALGORITHM  
-STEP 8 - PUBLISH TRANSFORMATION MATRIX TO TF TOPICS  
-  
-After that, rviz is loaded with a predefined config. Both cameras should be seen fully aligned inside rviz.
+### PREPROCESS_ALIGN_PUBLISH
+This program is designed to:
+ 1a. Read two pointclouds from ros PointCloud2 streams
+ 1b. OR read two pointclouds from .pcd files
+ 2. Downsample and filter both pointclouds
+ 3. Smooth Surfaces and make a coarse alignment
+ 4. Apply an iterative closest point algorithm
+ 5. Publish the Transformation Matrix to the ros /tf topic
+ ---------------------------------------------------------
+ Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>
+ OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>
+ Usually: /cam_1/depth/color/points and /cam_2/depth/color/points
+ This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
+ ---------------------------------------------------------
+ The following arguments activate the single steps:
+   * allstepsfpfh=true OR allstepsmanual=true    - activates all steps with manual or fpfh feature pre alignment
+   * passthrough=true                            - activates passthrough filter
+   * downsampling=true                           - activates downsampling
+   * outlier=true                                - activates outlier filter
+   * mls=true                                    - activates mls_smoothing
+   * manualalignment=true OR fpfhalignment=true  - activates manual or fpfh feature pre alignment
+   * publishtoros=true                           - activates quaternion transformation publishing to ros /tf topic
