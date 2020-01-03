@@ -588,9 +588,6 @@ int main(int argc, char **argv)
     // Dont forget the coarse pre-alignment from above! - Only if coarse pre-alignment was performed, otherwise transform_z and _x should be identity matrix
     Eigen::Matrix4f T = Ti * transform;
 
-    // Transform cloud cam_1
-    pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), T);
-
     // Concatenate both point clouds
     *clouds.at(0) += *clouds.at(1);
 
