@@ -334,7 +334,7 @@ int main(int argc, char **argv)
     {
       outlier_filter.setInputCloud(cloud);
       outlier_filter.setMeanK(50);
-      outlier_filter.setStddevMulThresh(2.0);
+      outlier_filter.setStddevMulThresh(1.0);
       outlier_filter.filter(*cloud);
     }
   }
@@ -558,6 +558,12 @@ int main(int argc, char **argv)
     // T(i-1) 
     prev = icp_nonlinear.getLastIncrementalTransformation();
 
+    if((icp_loop_count * icp_nonlinear.getMaximumIterations()) % 10 == 0){
+        // Fitness Score
+        std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
+                  << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
+    }
+
     if (icp_nonlinear.getFitnessScore() < 0.006){
       break;
     }
@@ -565,10 +571,9 @@ int main(int argc, char **argv)
 
   }
 
-  // Fitness Score
-  double fitness_score;
-  fitness_score = icp_nonlinear.getFitnessScore();
-  std::cout << "\nFitness Score: " << fitness_score << std::endl;
+  std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
+            << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
+
   std::cout << "\nICP Iterations: " << icp_nonlinear.getMaximumIterations() * icp_loop_count << std::endl;
 
   // Final Transformation
