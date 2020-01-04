@@ -5,16 +5,23 @@ Point Cloud Library, Robot Operating System, Intel D435
 
 ![alt text](https://i.ibb.co/W3w2vqp/4000-3000-max.jpg)
 
+This is a collection of ros launch files to start two intel d435 ros camera nodes and to apply a pointcloud registration
+on the two images. The resulting transformation is then applied via ros /tf topics and the clouds are vizualized inside rviz.
+
+Simply clone this git into your ros_workspace/src folder and build it with catkin_make.
 
 ## launch/start_3d_cams.launch
-Starts both intel D435i ROS Nodes. Change serial numbers to your models.
+Starts both intel D435i ROS Nodes. Change serial numbers inside this launch file to fit your models.
 
 ## launch/icp_align_rviz.launch
-Start your two ROS PointCloud2 topics before this program is started. See launch/start_3d_cams.launch
+Start your two ROS PointCloud2 topics before this program is started. Works with robags or real nodes. See launch/start_3d_cams.launch
 
 This launch file starts preprocess_align_publish, which consists of the following steps:
+Arguments can also be added into the launch file.
 
 ## PREPROCESS_ALIGN_PUBLISH 
+example call: rosrun perception
+
 This program is designed to:  
  1a. Read two pointclouds from ros PointCloud2 streams  
  1b. OR read two pointclouds from .pcd files  
