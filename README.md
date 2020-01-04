@@ -16,13 +16,14 @@ This launch file starts preprocess_align_publish, which consists of the followin
 
 ## PREPROCESS_ALIGN_PUBLISH 
 This program is designed to:  
-
  1a. Read two pointclouds from ros PointCloud2 streams  
  1b. OR read two pointclouds from .pcd files  
  2. Downsample and filter both pointclouds  
  3. Smooth Surfaces and make a coarse alignment  
- 4. Apply an iterative closest point algorithm  
- 5. Publish the Transformation Matrix to the ros /tf topic  
+ 4. Apply an iterative closest point algorithm 
+ 
+ 5. Publish the Transformation Matrix to the ros /tf topic
+ 
  ---------------------------------------------------------  
  Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>  
  OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>  
