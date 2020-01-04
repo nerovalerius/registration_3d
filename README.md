@@ -21,14 +21,15 @@ This program is designed to:
  2. Downsample and filter both pointclouds  
  3. Smooth Surfaces and make a coarse alignment  
  4. Apply an iterative closest point algorithm 
- 
  5. Publish the Transformation Matrix to the ros /tf topic
  
- ---------------------------------------------------------  
+ ---------------------------------------------------------
+ 
  Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>  
  OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>  
  Usually: /cam_1/depth/color/points and /cam_2/depth/color/points  
- This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files  
+ This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
+ 
  ---------------------------------------------------------
  The following arguments activate the single steps:
    * allstepsfpfh=true OR allstepsmanual=true    - activates all steps with manual or fpfh feature pre alignment
