@@ -12,6 +12,8 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/pcl_config.h>
+
 
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
@@ -128,7 +130,9 @@ int main(int argc, char **argv)
   for (const auto &arg : args) {
     // User needs HELP
     if (arg.find("help") != std::string::npos) {
-      std::cout << "This program is designed to:"
+      std::cout << "PREPROCESS - ALIGN - PUBLISH"
+                << "\nPCL-Version: " << PCL_VERSION 
+                << "\nThis program is designed to:"
                 << "\n 1a. Read two pointclouds from ros PointCloud2 streams"
                 << "\n 1b. OR read two pointclouds from .pcd files"
                 << "\n 2. Downsample and filter both pointclouds"
@@ -171,7 +175,8 @@ int main(int argc, char **argv)
       sensor_msgs::PointCloud2ConstPtr cloud_msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(arg, ros::Duration(10));
       // Convert the catched message into a pointcloud object
       pcl::fromROSMsg(*cloud_msg, *cloud_ptr);
-
+      
+        // Copy PointXYZ to PointNormal
       pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
 
       // Add the point cloud to the list of point clouds
@@ -198,7 +203,7 @@ int main(int argc, char **argv)
           return (-1);
         }
 
-        // Add the point cloud to the list of point clouds
+        // Copy PointXYZ to PointNormal
         pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
 
         // Add the point cloud to the list of point clouds
@@ -269,8 +274,11 @@ int main(int argc, char **argv)
   //  PASSTHROUGH_FILTER
   // ------------------------------------------------------
 
+  // Always Active, when MLS is active, otherwise ICP will fail with an Assertion: point_representation_->isValid (point) && "Invalid (NaN, Inf
+
   // Active?
-  if (passthrough_active){
+  if (passthrough_active || mls_active){
+
     // Output
     std::cout << "STEP " << step << " - PASSTHROUGH_FILTER" << std::endl;
     ++step;
@@ -278,6 +286,7 @@ int main(int argc, char **argv)
     // Configure the filter
     pcl::PassThrough<pcl::PointNormal> passthrough_filter;
     passthrough_filter.setFilterFieldName("z");
+
     // Set filter from 0.5m to 2.1m
     passthrough_filter.setFilterLimits(0.5, 2.1);
 
@@ -288,14 +297,16 @@ int main(int argc, char **argv)
       passthrough_filter.filter(*cloud);
     }
   }
-  
+
 
   // ------------------------------------------------------
   //  DOWNSAMPLING
   // ------------------------------------------------------
 
+  // Always Active, when MLS is active, otherwise ICP will fail with an Assertion: point_representation_->isValid (point) && "Invalid (NaN, Inf
+
   // Active?
-  if (downsampling_active){
+  if (downsampling_active || mls_active){
     // Output
     std::cout << "STEP " << step << " - DOWNSAMPLING" << std::endl;
     ++step;
@@ -496,7 +507,7 @@ int main(int argc, char **argv)
 
   }
   
-
+  
   // ------------------------------------------------------
   //  ITERATIVE CLOSEST POINT ALGORITHM
   // ------------------------------------------------------
@@ -537,6 +548,9 @@ int main(int argc, char **argv)
   icp_nonlinear.setMaximumIterations(2);
   
   int icp_loop_count;
+  double fitness_score_limit = 0.006;
+
+  std::cout << "Fitness Score Limit: " << fitness_score_limit << std::endl;
 
   // Iterate two times each loop 
   for (icp_loop_count = 0; icp_loop_count < 30; ++icp_loop_count)
@@ -564,15 +578,11 @@ int main(int argc, char **argv)
                   << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
     }
 
-    if (icp_nonlinear.getFitnessScore() < 0.006){
+    if (icp_nonlinear.getFitnessScore() < fitness_score_limit){
       break;
     }
 
-
   }
-
-  std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
-            << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
 
   std::cout << "\nICP Iterations: " << icp_nonlinear.getMaximumIterations() * icp_loop_count << std::endl;
 
