@@ -14,13 +14,13 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/pcl_config.h>
 
-
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
 #include <pcl/features/fpfh.h>
+#include <pcl/features/normal_3d.h>
 
 #include <pcl/kdtree/kdtree_flann.h>
 
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
       // Convert the catched message into a pointcloud object
       pcl::fromROSMsg(*cloud_msg, *cloud_ptr);
       
-        // Copy PointXYZ to PointNormal
+      // Copy PointXYZ to PointNormal
       pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
 
       // Add the point cloud to the list of point clouds
@@ -185,29 +185,29 @@ int main(int argc, char **argv)
     // Arguments are point cloud streams? usually contain "points" in their path
     } else if (arg.find(".pcd") != std::string::npos) { 
 
-        // ------------------------------------------------------
-        //  STEP 0b - READ POINTCLOUD FROM FILE
-        // ------------------------------------------------------
-        
-        // Output
-        std::cout << "STEP " << step << " - READ A POINTCLOUD FROM PCD FILE" << std::endl;
-        ++step;
+      // ------------------------------------------------------
+      //  STEP 0b - READ POINTCLOUD FROM FILE
+      // ------------------------------------------------------
+      
+      // Output
+      std::cout << "STEP " << step << " - READ A POINTCLOUD FROM PCD FILE" << std::endl;
+      ++step;
 
-        // Define a pointer to a cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointNormal>::Ptr cloud_ptr_normal(new pcl::PointCloud<pcl::PointNormal>);
+      // Define a pointer to a cloud
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+      pcl::PointCloud<pcl::PointNormal>::Ptr cloud_ptr_normal(new pcl::PointCloud<pcl::PointNormal>);
 
-        // Read Cloud from File
-        if (pcl::io::loadPCDFile<pcl::PointXYZ> (arg, *cloud_ptr) == -1){ 
-          std::cout << "could not read " << arg << std::endl;
-          return (-1);
-        }
+      // Read Cloud from File
+      if (pcl::io::loadPCDFile<pcl::PointXYZ> (arg, *cloud_ptr) == -1){ 
+        std::cout << "could not read " << arg << std::endl;
+        return (-1);
+      }
 
-        // Copy PointXYZ to PointNormal
-        pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
+      // Copy PointXYZ to PointNormal
+      pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
 
-        // Add the point cloud to the list of point clouds
-        clouds.push_back(cloud_ptr_normal);
+      // Add the point cloud to the list of point clouds
+      clouds.push_back(cloud_ptr_normal);
 
     // Activate passthrough filter
     } else if (arg.find("passthrough=true") != std::string::npos) {      
@@ -274,10 +274,9 @@ int main(int argc, char **argv)
   //  PASSTHROUGH_FILTER
   // ------------------------------------------------------
 
-  // Always Active, when MLS is active, otherwise ICP will fail with an Assertion: point_representation_->isValid (point) && "Invalid (NaN, Inf
 
   // Active?
-  if (passthrough_active || mls_active){
+  if (passthrough_active){
 
     // Output
     std::cout << "STEP " << step << " - PASSTHROUGH_FILTER" << std::endl;
@@ -303,10 +302,9 @@ int main(int argc, char **argv)
   //  DOWNSAMPLING
   // ------------------------------------------------------
 
-  // Always Active, when MLS is active, otherwise ICP will fail with an Assertion: point_representation_->isValid (point) && "Invalid (NaN, Inf
 
   // Active?
-  if (downsampling_active || mls_active){
+  if (downsampling_active){
     // Output
     std::cout << "STEP " << step << " - DOWNSAMPLING" << std::endl;
     ++step;
@@ -374,15 +372,28 @@ int main(int argc, char **argv)
 
     // Apply moving least squares algorithm
     for (auto &cloud : clouds) {
+
       mls_smoothing.setInputCloud(cloud);
 
       // MLS needs a second cloud to work
       pcl::PointCloud<pcl::PointNormal> smoothed_cloud;
       mls_smoothing.process(smoothed_cloud);
       *cloud = smoothed_cloud;
+
+      std::vector<int> indices;
+      
+      // Otherwise ICP would throw an Inf / NaN Error
+      if (!cloud->is_dense){
+        pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
+      }
+
+      // Otherwise ICP would throw an Inf / NaN Error
+      pcl::removeNaNNormalsFromPointCloud(*cloud, *cloud, indices);
+
     }
   }
-  
+
+
   // ------------------------------------------------------
   //  COMPUTE FPFH FEATURES AND ALIGN VIA SAMPLE CONSENSUS INITIAL ALIGNMENT
   // ------------------------------------------------------
@@ -390,7 +401,6 @@ int main(int argc, char **argv)
   // ----------------------
   //  COMPUTE FPFH FEATURES
   // ----------------------
-
 
   // Active ?
   if (fpfhalignment_active == true && manualalignment_active == false){
