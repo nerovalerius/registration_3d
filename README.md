@@ -14,7 +14,7 @@ Start your two ROS PointCloud2 topics before this program is started. See launch
 
 This launch file starts preprocess_align_publish, which consists of the following steps:
 
-### PREPROCESS_ALIGN_PUBLISH \
+### PREPROCESS_ALIGN_PUBLISH </br>
 This program is designed to:
  1a. Read two pointclouds from ros PointCloud2 streams
  1b. OR read two pointclouds from .pcd files
