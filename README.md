@@ -44,4 +44,5 @@ This program is designed to:
    * manualalignment=true OR fpfhalignment=true  - activates manual or fpfh feature pre alignment
    * publishtoros=true                           - activates quaternion transformation publishing to ros /tf topic
 
+ ---------------------------------------------------------
  This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
