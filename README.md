@@ -25,10 +25,10 @@ This program is designed to:
  
  ---------------------------------------------------------
  The following arguments read two point clouds:
- * FROM ROS TOPIC:
+ * FROM ROS TOPIC:\
    <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>  
    e.g: /cam_1/depth/color/points and /cam_2/depth/color/points  
- * FROM PCD FILE:
+ * FROM PCD FILE:\
    <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>  
    e.g: perception/pointcloud_samples/cam_1_optimal.pcd perception/pointcloud_samples/cam_2_optimal.pcd
  
