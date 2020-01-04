@@ -17,7 +17,6 @@ This launch file starts preprocess_align_publish, which consists of the followin
 ### PREPROCESS_ALIGN_PUBLISH 
 test
 
-
 This program is designed to:
  1a. Read two pointclouds from ros PointCloud2 streams
  1b. OR read two pointclouds from .pcd files
@@ -39,3 +38,4 @@ This program is designed to:
    * mls=true                                    - activates mls_smoothing  - CURRENTLY only usable with downsampling and passthrough
    * manualalignment=true OR fpfhalignment=true  - activates manual or fpfh feature pre alignment
    * publishtoros=true                           - activates quaternion transformation publishing to ros /tf topic
+
