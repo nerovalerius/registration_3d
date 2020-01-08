@@ -19,7 +19,7 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
-#include <pcl/features/fpfh.h>
+#include <pcl/features/fpfh_omp.h>
 #include <pcl/features/normal_3d.h>
 
 #include <pcl/kdtree/kdtree_flann.h>
@@ -440,7 +440,7 @@ void TransformationCalculator::ComputeFPFHFeatures()
     std::vector<pcl::PointCloud<pcl::FPFHSignature33>::Ptr> fpfh_features;
 
     // Create the FPFH estimation class,
-    pcl::FPFHEstimation<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
+    pcl::FPFHEstimationOMP<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
 
     // Search tree
     pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
