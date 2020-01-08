@@ -20,38 +20,35 @@ This launch file starts preprocess_align_publish, which consists of the followin
 Arguments can also be added into the launch file.
 
 ## PREPROCESS_ALIGN_PUBLISH 
-example call: rosrun perception
+example call: rosrun perception preprocess_align_publish catkinws/src/perception/pointcloud_samples/cam_1_optimal.pcd catkinws/src/perception/pointcloud_samples/cam_2_optimal.pcd manualalignment=true passthrough=true downsampling=true outlier=true displayresult=true mls=true algorithm=gicp publishtoros=true
 
-This program is designed to:  
- 1a. Read two pointclouds from ros PointCloud2 streams  
- 1b. OR read two pointclouds from .pcd files  
- 2. Downsample and filter both pointclouds  
- 3. Smooth Surfaces and make a coarse alignment  
- 4. Apply an iterative closest point algorithm
+This program is designed to:
+ 1a. Read two pointclouds from ros PointCloud2 streams
+ 1b. OR read two pointclouds from .pcd files
+ 2. Downsample and filter both pointclouds
+ 3. Smooth Surfaces and make a coarse alignment
+ 4. Apply an alignment algorithm
  5. Publish the Transformation Matrix to the ros /tf topic
  6. Display the alignment result
- 
+   
  ---------------------------------------------------------
- The following arguments read two point clouds:
- * FROM ROS TOPIC:\
-   <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>  
-   e.g: /cam_1/depth/color/points and /cam_2/depth/color/points  
- * FROM PCD FILE:\
-   <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>  
-   e.g: perception/pointcloud_samples/cam_1_optimal.pcd perception/pointcloud_samples/cam_2_optimal.pcd
- 
-
- 
- ---------------------------------------------------------
- The following arguments activate the single preprocessing / filtering steps:
-   * allstepsfpfh=true OR allstepsmanual=true    - activates all steps with manual or fpfh feature pre alignment
-   * passthrough=true                            - activates passthrough filter
-   * downsampling=true                           - activates downsampling
-   * outlier=true                                - activates outlier filter
-   * mls=true                                    - activates mls_smoothing  - CURRENTLY only usable with downsampling and passthrough
-   * manualalignment=true OR fpfhalignment=true  - activates manual or fpfh feature pre alignment
-   * publishtoros=true                           - activates quaternion transformation publishing to ros /tf topic
-   * displayresult=true				                   - displays alignment result
-
- ---------------------------------------------------------
+ Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>
+ OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>
+ Usually: /cam_1/depth/color/points and /cam_2/depth/color/points
  This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
+
+ ---------------------------------------------------------
+ The following arguments activate the single steps:
+   * algorithm=<alignment_alogrithm> - alignment_alogrithm has to be on of the following:
+      * icp - regular icp
+      * gicp - generalized icp
+      * nlicp - nonlinear icp
+      * fpfh - Fast Point Feature Histogram (default)
+   * allsteps=true 				   - activates all preprocessing steps
+   * passthrough=true				 - activates passthrough filter
+   * downsampling=true			 - activates downsampling
+   * outlier=true				     - activates outlier filter
+   * mls=true					       - activates mls_smoothing
+   * manualalignment=true 	 - activates manual pre alignment. only used with icp variants
+   * publishtoros=true			 - activates quaternion transformation publishing to ros /tf topic
+   * displayresult=true			 - displays alignment result

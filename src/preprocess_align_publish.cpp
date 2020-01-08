@@ -109,7 +109,7 @@ public:
 
 private:
   void StartRosNode(int argc, char **argv);
-  int ProcessArguments(int argc, char **argv);
+  std::pair<bool, int> ProcessArguments(int argc, char **argv);
   void PassthroughFilter();
   void Downsampling();
   void RemoveOutliers();
@@ -130,12 +130,13 @@ void TransformationCalculator::StartRosNode(int argc, char **argv)
   std::cout << "PREPROCESS_ALIGN_PUBLISH" << std::endl;
 }
 
-int TransformationCalculator::ProcessArguments(int argc, char **argv)
+// returns if the program should continue and the return value for the program if not
+std::pair<bool, int> TransformationCalculator::ProcessArguments(int argc, char **argv)
 {
   if (argc < 2)
   {
     std::cout << "not enough arguments - type --help for more info" << std::endl;
-    return -1;
+    return std::make_pair(false, -1);
   }
 
   // Argument-Vector
@@ -162,28 +163,29 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
                 << "\n 3. Smooth Surfaces and make a coarse alignment"
                 << "\n 4. Apply an alignment algorithm"
                 << "\n 5. Publish the Transformation Matrix to the ros /tf topic"
+                << "\n 6. Display the alignment result"
                 << "\n ---------------------------------------------------------"
-                << "\n Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic> algorithm=<alignment_alogrithm>"
-                << "\n OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd> algorithm=<alignment_alogrithm>"
+                << "\n Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>"
+                << "\n OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>"
                 << "\n Usually: /cam_1/depth/color/points and /cam_2/depth/color/points"
-                << "\n alignment_alogrithm has to be on of the following:"
-                << "\n   * icp - regular icp"
-                << "\n   * gicp - generalized icp"
-                << "\n   * nlicp - nonlinear icp"
-                << "\n   * fpfh - Fast Point Feature Histogram (default)"
                 << "\n This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files"
                 << "\n ---------------------------------------------------------"
                 << "\n The following arguments activate the single steps:"
+                << "\n   * algorithm=<alignment_alogrithm> - alignment_alogrithm has to be on of the following:"
+                << "\n      * icp - regular icp"
+                << "\n      * gicp - generalized icp"
+                << "\n      * nlicp - nonlinear icp"
+                << "\n      * fpfh - Fast Point Feature Histogram (default)"
                 << "\n   * allsteps=true \t\t\t\t - activates all preprocessing steps"
                 << "\n   * passthrough=true\t\t\t\t - activates passthrough filter"
                 << "\n   * downsampling=true\t\t\t\t - activates downsampling"
                 << "\n   * outlier=true\t\t\t\t - activates outlier filter"
                 << "\n   * mls=true\t\t\t\t\t - activates mls_smoothing"
-                << "\n   * manualalignment=true \t\t\t\t - activates manual pre alignment. only used with icp variants"
+                << "\n   * manualalignment=true \t\t\t - activates manual pre alignment. only used with icp variants"
                 << "\n   * publishtoros=true\t\t\t\t - activates quaternion transformation publishing to ros /tf topic"
                 << "\n   * displayresult=true\t\t\t\t - displays alignment result"
                 << std::endl;
-      return 0;
+      return std::make_pair(false, 0);
 
       // Arguments are point cloud streams? usually contain "points"  and "/cam" in their path
     }
@@ -234,7 +236,7 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
       if (pcl::io::loadPCDFile<pcl::PointXYZ>(arg, *cloud_ptr) == -1)
       {
         std::cout << "could not read " << arg << std::endl;
-        return (-1);
+        return std::make_pair(false, -1);
       }
 
       // Copy PointXYZ to PointNormal
@@ -319,7 +321,7 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
     else
     {
       std::cout << "No proper arguments given - type --help for more info " << std::endl;
-      return -1;
+      return std::make_pair(false, -1);
     }
   }
 
@@ -327,9 +329,9 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
   if (clouds.size() != 2)
   {
     std::cout << "No proper pointclouds given" << std::endl;
-    return -1;
+    return std::make_pair(false, -1);
   }
-  return 0;
+  return std::make_pair(true, -1);
 }
 
 void TransformationCalculator::PassthroughFilter()
@@ -707,8 +709,8 @@ void TransformationCalculator::DisplayAlignmentResult()
 int TransformationCalculator::run(int argc, char **argv)
 {
   StartRosNode(argc, argv);
-  int result = ProcessArguments(argc, argv);
-  if (result != 0)
+  auto [should_continue, result] = ProcessArguments(argc, argv);
+  if (!should_continue)
   {
     return result;
   }
