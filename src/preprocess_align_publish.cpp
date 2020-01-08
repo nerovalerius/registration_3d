@@ -106,7 +106,7 @@ private:
   void CoarseManualAlignment();
   void IcpAlgorithm();
   void PublishTransformation();
-  void DisplayAlingmentResult();
+  void DisplayAlignmentResult();
 };
 
 void TransformationCalculator::StartRosNode(int argc, char **argv)
@@ -311,234 +311,210 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
 
 void TransformationCalculator::PassthroughFilter()
 {
-  // Active?
-  if (passthrough_active)
+  // Output
+  std::cout << "STEP " << step << " - PASSTHROUGH_FILTER" << std::endl;
+  ++step;
+
+  // Configure the filter
+  pcl::PassThrough<pcl::PointNormal> passthrough_filter;
+  passthrough_filter.setFilterFieldName("z");
+
+  // Set filter from 0.5m to 2.1m
+  passthrough_filter.setFilterLimits(0.5, 2.1);
+
+  // Apply passthrough filter
+  for (auto &cloud : clouds)
   {
-
-    // Output
-    std::cout << "STEP " << step << " - PASSTHROUGH_FILTER" << std::endl;
-    ++step;
-
-    // Configure the filter
-    pcl::PassThrough<pcl::PointNormal> passthrough_filter;
-    passthrough_filter.setFilterFieldName("z");
-
-    // Set filter from 0.5m to 2.1m
-    passthrough_filter.setFilterLimits(0.5, 2.1);
-
-    // Apply passthrough filter
-    for (auto &cloud : clouds)
-    {
-      passthrough_filter.setInputCloud(cloud);
-      passthrough_filter.filter(*cloud);
-    }
+    passthrough_filter.setInputCloud(cloud);
+    passthrough_filter.filter(*cloud);
   }
 }
 
 void TransformationCalculator::Downsampling()
 {
-  // Active?
-  if (downsampling_active)
+  // Output
+  std::cout << "STEP " << step << " - DOWNSAMPLING" << std::endl;
+  ++step;
+
+  // Downsampling of the point clouds using a voxelgrid filter
+  // significantly reduces computing time in the next steps
+
+  // Configure the filter
+  pcl::VoxelGrid<pcl::PointNormal> voxelgrid_filter;
+  voxelgrid_filter.setLeafSize(0.015, 0.015, 0.015);
+
+  // Apply voxel grid filter
+  for (auto &cloud : clouds)
   {
-    // Output
-    std::cout << "STEP " << step << " - DOWNSAMPLING" << std::endl;
-    ++step;
-
-    // Downsampling of the point clouds using a voxelgrid filter
-    // significantly reduces computing time in the next steps
-
-    // Configure the filter
-    pcl::VoxelGrid<pcl::PointNormal> voxelgrid_filter;
-    voxelgrid_filter.setLeafSize(0.015, 0.015, 0.015);
-
-    // Apply voxel grid filter
-    for (auto &cloud : clouds)
-    {
-      voxelgrid_filter.setInputCloud(cloud);
-      voxelgrid_filter.filter(*cloud);
-    }
+    voxelgrid_filter.setInputCloud(cloud);
+    voxelgrid_filter.filter(*cloud);
   }
 }
 
 void TransformationCalculator::RemoveOutliers()
 {
   // Active ?
-  if (outlier_active)
+  // Output
+  std::cout << "STEP " << step << " - REMOVE OUTLIERS" << std::endl;
+  ++step;
+
+  // Configure the filter
+  pcl::StatisticalOutlierRemoval<pcl::PointNormal> outlier_filter;
+
+  // Apply outlier filter
+  for (auto &cloud : clouds)
   {
-    // Output
-    std::cout << "STEP " << step << " - REMOVE OUTLIERS" << std::endl;
-    ++step;
-
-    // Configure the filter
-    pcl::StatisticalOutlierRemoval<pcl::PointNormal> outlier_filter;
-
-    // Apply outlier filter
-    for (auto &cloud : clouds)
-    {
-      outlier_filter.setInputCloud(cloud);
-      outlier_filter.setMeanK(50);
-      outlier_filter.setStddevMulThresh(1.0);
-      outlier_filter.filter(*cloud);
-    }
+    outlier_filter.setInputCloud(cloud);
+    outlier_filter.setMeanK(50);
+    outlier_filter.setStddevMulThresh(1.0);
+    outlier_filter.filter(*cloud);
   }
 }
 
 void TransformationCalculator::SmoothSurficesMLS()
 {
-  // Active ?
-  if (mls_active)
+  // Output
+  std::cout << "STEP " << step << " - SMOOTHE SURFACES" << std::endl;
+  ++step;
+
+  // KD-Tree as search method for moving least squares algorithm
+  pcl::search::KdTree<pcl::PointNormal>::Ptr kd_tree(new pcl::search::KdTree<pcl::PointNormal>);
+
+  // Configure the filter
+  pcl::MovingLeastSquares<pcl::PointNormal, pcl::PointNormal> mls_smoothing;
+  mls_smoothing.setComputeNormals(true);
+  mls_smoothing.setPolynomialOrder(2);
+  mls_smoothing.setSearchMethod(kd_tree);
+  mls_smoothing.setSearchRadius(0.03);
+
+  // Apply moving least squares algorithm
+  for (auto &cloud : clouds)
   {
-    // Output
-    std::cout << "STEP " << step << " - SMOOTHE SURFACES" << std::endl;
-    ++step;
 
-    // KD-Tree as search method for moving least squares algorithm
-    pcl::search::KdTree<pcl::PointNormal>::Ptr kd_tree(new pcl::search::KdTree<pcl::PointNormal>);
+    mls_smoothing.setInputCloud(cloud);
 
-    // Configure the filter
-    pcl::MovingLeastSquares<pcl::PointNormal, pcl::PointNormal> mls_smoothing;
-    mls_smoothing.setComputeNormals(true);
-    mls_smoothing.setPolynomialOrder(2);
-    mls_smoothing.setSearchMethod(kd_tree);
-    mls_smoothing.setSearchRadius(0.03);
+    // MLS needs a second cloud to work
+    pcl::PointCloud<pcl::PointNormal> smoothed_cloud;
+    mls_smoothing.process(smoothed_cloud);
+    *cloud = smoothed_cloud;
 
-    // Apply moving least squares algorithm
-    for (auto &cloud : clouds)
+    std::vector<int> indices;
+
+    // Otherwise ICP would throw an Inf / NaN Error
+    if (!cloud->is_dense)
     {
-
-      mls_smoothing.setInputCloud(cloud);
-
-      // MLS needs a second cloud to work
-      pcl::PointCloud<pcl::PointNormal> smoothed_cloud;
-      mls_smoothing.process(smoothed_cloud);
-      *cloud = smoothed_cloud;
-
-      std::vector<int> indices;
-
-      // Otherwise ICP would throw an Inf / NaN Error
-      if (!cloud->is_dense)
-      {
-        pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
-      }
-
-      // Otherwise ICP would throw an Inf / NaN Error
-      pcl::removeNaNNormalsFromPointCloud(*cloud, *cloud, indices);
+      pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
     }
+
+    // Otherwise ICP would throw an Inf / NaN Error
+    pcl::removeNaNNormalsFromPointCloud(*cloud, *cloud, indices);
   }
 }
 
 void TransformationCalculator::ComputeFPFHFeatures()
 {
-  // Active ?
-  if (fpfhalignment_active == true && manualalignment_active == false)
+  // Output
+  std::cout << "STEP " << step << " - COMPUTE FPFH FEATURES" << std::endl;
+  ++step;
+
+  // Pointcloud-Vector
+  std::vector<pcl::PointCloud<pcl::FPFHSignature33>::Ptr> fpfh_features;
+
+  // Create the FPFH estimation class,
+  pcl::FPFHEstimationOMP<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
+
+  // Search tree
+  pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
+
+  // Define tree as search method
+  fpfh.setSearchMethod(tree);
+
+  // Use all neighbors inside 5cm radius
+  fpfh.setRadiusSearch(0.05);
+
+  // Compute FPFH Features
+  for (auto &cloud : clouds)
   {
-    // Output
-    std::cout << "STEP " << step << " - COMPUTE FPFH FEATURES" << std::endl;
-    ++step;
 
-    // Pointcloud-Vector
-    std::vector<pcl::PointCloud<pcl::FPFHSignature33>::Ptr> fpfh_features;
+    // Set cloud and its normals
+    fpfh.setInputCloud(cloud);
+    fpfh.setInputNormals(cloud);
 
-    // Create the FPFH estimation class,
-    pcl::FPFHEstimationOMP<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
+    // Output datasets
+    pcl::PointCloud<pcl::FPFHSignature33>::Ptr fpfh_feature(new pcl::PointCloud<pcl::FPFHSignature33>());
 
-    // Search tree
-    pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
+    // Compute the features
+    fpfh.compute(*fpfh_feature);
 
-    // Define tree as search method
-    fpfh.setSearchMethod(tree);
-
-    // Use all neighbors inside 5cm radius
-    fpfh.setRadiusSearch(0.05);
-
-    // Compute FPFH Features
-    for (auto &cloud : clouds)
-    {
-
-      // Set cloud and its normals
-      fpfh.setInputCloud(cloud);
-      fpfh.setInputNormals(cloud);
-
-      // Output datasets
-      pcl::PointCloud<pcl::FPFHSignature33>::Ptr fpfh_feature(new pcl::PointCloud<pcl::FPFHSignature33>());
-
-      // Compute the features
-      fpfh.compute(*fpfh_feature);
-
-      fpfh_features.push_back(fpfh_feature);
-    }
-
-    // ----------------------
-    //  SAMPLE CONSENSUS INITIAL ALIGNMENT
-    // ----------------------
-
-    // Output
-    std::cout << "STEP " << step << " - SAMPLE CONSENSUS INITIAL ALIGNMENT" << std::endl;
-    ++step;
-
-    // The aligned point cloud
-    pcl::PointCloud<pcl::PointNormal> sc_aligned_cloud;
-
-    // Sample Consensus alignment method with fpfh features
-    pcl::SampleConsensusInitialAlignment<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> sc_alignment;
-
-    // Set input and output clouds and features
-    sc_alignment.setInputSource(clouds.at(0));
-    sc_alignment.setSourceFeatures(fpfh_features.at(0));
-
-    sc_alignment.setInputTarget(clouds.at(1));
-    sc_alignment.setTargetFeatures(fpfh_features.at(1));
-
-    // Align via fpfh features
-    sc_alignment.align(sc_aligned_cloud);
-
-    // Get transformation matrix
-    transform = sc_alignment.getFinalTransformation();
+    fpfh_features.push_back(fpfh_feature);
   }
+
+  // ----------------------
+  //  SAMPLE CONSENSUS INITIAL ALIGNMENT
+  // ----------------------
+
+  // Output
+  std::cout << "STEP " << step << " - SAMPLE CONSENSUS INITIAL ALIGNMENT" << std::endl;
+  ++step;
+
+  // The aligned point cloud
+  pcl::PointCloud<pcl::PointNormal> sc_aligned_cloud;
+
+  // Sample Consensus alignment method with fpfh features
+  pcl::SampleConsensusInitialAlignment<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> sc_alignment;
+
+  // Set input and output clouds and features
+  sc_alignment.setInputSource(clouds.at(0));
+  sc_alignment.setSourceFeatures(fpfh_features.at(0));
+
+  sc_alignment.setInputTarget(clouds.at(1));
+  sc_alignment.setTargetFeatures(fpfh_features.at(1));
+
+  // Align via fpfh features
+  sc_alignment.align(sc_aligned_cloud);
+
+  // Get transformation matrix
+  transform = sc_alignment.getFinalTransformation();
   pcl::transformPointCloud(*clouds[0], *clouds[0], transform);
 }
 
 void TransformationCalculator::CoarseManualAlignment()
 {
-  // Active?
-  if (fpfhalignment_active == false && manualalignment_active == true)
-  {
-    // Rotation Matrices
-    Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
-    Eigen::Matrix4f transform_z = Eigen::Matrix4f::Identity();
+  // Rotation Matrices
+  Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
+  Eigen::Matrix4f transform_z = Eigen::Matrix4f::Identity();
 
-    // Output
-    std::cout << "STEP " << step << " - COARSE MANUAL ALIGNMENT" << std::endl;
-    ++step;
+  // Output
+  std::cout << "STEP " << step << " - COARSE MANUAL ALIGNMENT" << std::endl;
+  ++step;
 
-    // 45 Degrees
-    int angle = -45;
+  // 45 Degrees
+  int angle = -45;
 
-    // Rotate fist pointcloud by 45° in X axis
-    transform_x(0, 0) = 1;
-    transform_x(1, 1) = cos(angle * M_PI / 180);
-    transform_x(1, 2) = -sin(angle * M_PI / 180);
-    transform_x(2, 1) = sin(angle * M_PI / 180);
-    transform_x(2, 2) = cos(angle * M_PI / 180);
-    transform_x(3, 3) = 1;
+  // Rotate fist pointcloud by 45° in X axis
+  transform_x(0, 0) = 1;
+  transform_x(1, 1) = cos(angle * M_PI / 180);
+  transform_x(1, 2) = -sin(angle * M_PI / 180);
+  transform_x(2, 1) = sin(angle * M_PI / 180);
+  transform_x(2, 2) = cos(angle * M_PI / 180);
+  transform_x(3, 3) = 1;
 
-    // 180 Degrees
-    angle = 180;
+  // 180 Degrees
+  angle = 180;
 
-    // Rotate fist pointcloud by 180 in Z axis
-    transform_z(0, 0) = cos(angle * M_PI / 180);
-    transform_z(0, 1) = -sin(angle * M_PI / 180);
-    transform_z(1, 0) = sin(angle * M_PI / 180);
-    transform_z(1, 1) = cos(angle * M_PI / 180);
-    transform_z(2, 2) = 1;
-    transform_z(3, 3) = 1;
+  // Rotate fist pointcloud by 180 in Z axis
+  transform_z(0, 0) = cos(angle * M_PI / 180);
+  transform_z(0, 1) = -sin(angle * M_PI / 180);
+  transform_z(1, 0) = sin(angle * M_PI / 180);
+  transform_z(1, 1) = cos(angle * M_PI / 180);
+  transform_z(2, 2) = 1;
+  transform_z(3, 3) = 1;
 
-    // complete transformation
-    transform = transform_z * transform_x;
+  // complete transformation
+  transform = transform_z * transform_x;
 
-    // Apply 180 rotation - Z axis
-    pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), transform);
-  }
+  // Apply 180 rotation - Z axis
+  pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), transform);
 }
 
 void TransformationCalculator::IcpAlgorithm()
@@ -624,75 +600,68 @@ void TransformationCalculator::IcpAlgorithm()
 
 void TransformationCalculator::PublishTransformation()
 {
-  // Active?
-  if (publishtoros_active)
-  {
-    // Output
-    std::cout << "STEP " << step << " - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n"
-              << std::endl;
-    ++step;
+  // Output
+  std::cout << "STEP " << step << " - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n"
+            << std::endl;
+  ++step;
 
-    // Dont forget the coarse pre-alignment from above! - Only if coarse pre-alignment was performed, otherwise transform_z and _x should be identity matrix
-    Eigen::Matrix4f T = Ti * transform;
+  // Dont forget the coarse pre-alignment from above! - Only if coarse pre-alignment was performed, otherwise transform_z and _x should be identity matrix
+  Eigen::Matrix4f T = Ti * transform;
 
-    // Concatenate both point clouds
-    *clouds.at(0) += *clouds.at(1);
+  // Concatenate both point clouds
+  *clouds.at(0) += *clouds.at(1);
 
-    // Write aligned cloud to file
-    pcl::io::savePCDFileASCII("./temporal_test_cloud.pcd", *clouds.at(0));
+  // Write aligned cloud to file
+  pcl::io::savePCDFileASCII("./temporal_test_cloud.pcd", *clouds.at(0));
 
-    // Rotation Matrix
-    tf2::Matrix3x3 rotation_matrix;
-    rotation_matrix.setValue(T(0, 0), T(0, 1), T(0, 2),
-                             T(1, 0), T(1, 1), T(1, 2),
-                             T(2, 0), T(2, 1), T(2, 2));
+  // Rotation Matrix
+  tf2::Matrix3x3 rotation_matrix;
+  rotation_matrix.setValue(T(0, 0), T(0, 1), T(0, 2),
+                           T(1, 0), T(1, 1), T(1, 2),
+                           T(2, 0), T(2, 1), T(2, 2));
 
-    // Calculate Quaternions
-    tf2::Quaternion quaternion;
-    rotation_matrix.getRotation(quaternion);
+  // Calculate Quaternions
+  tf2::Quaternion quaternion;
+  rotation_matrix.getRotation(quaternion);
 
-    // Broadcast to tf_static topic
-    static tf2_ros::StaticTransformBroadcaster static_broadcaster;
-    geometry_msgs::TransformStamped static_transform_stamped;
-    static_transform_stamped.header.stamp = ros::Time::now();
-    static_transform_stamped.header.frame_id = "cam_2_depth_optical_frame";
-    static_transform_stamped.child_frame_id = "cam_1_depth_optical_frame";
+  // Broadcast to tf_static topic
+  static tf2_ros::StaticTransformBroadcaster static_broadcaster;
+  geometry_msgs::TransformStamped static_transform_stamped;
+  static_transform_stamped.header.stamp = ros::Time::now();
+  static_transform_stamped.header.frame_id = "cam_2_depth_optical_frame";
+  static_transform_stamped.child_frame_id = "cam_1_depth_optical_frame";
 
-    // Translation Vector
-    static_transform_stamped.transform.translation.x = T(0, 3);
-    static_transform_stamped.transform.translation.y = T(1, 3);
-    static_transform_stamped.transform.translation.z = T(2, 3);
+  // Translation Vector
+  static_transform_stamped.transform.translation.x = T(0, 3);
+  static_transform_stamped.transform.translation.y = T(1, 3);
+  static_transform_stamped.transform.translation.z = T(2, 3);
 
-    // Rotation
-    static_transform_stamped.transform.rotation.x = quaternion.x();
-    static_transform_stamped.transform.rotation.y = quaternion.y();
-    static_transform_stamped.transform.rotation.z = quaternion.z();
-    static_transform_stamped.transform.rotation.w = quaternion.w();
+  // Rotation
+  static_transform_stamped.transform.rotation.x = quaternion.x();
+  static_transform_stamped.transform.rotation.y = quaternion.y();
+  static_transform_stamped.transform.rotation.z = quaternion.z();
+  static_transform_stamped.transform.rotation.w = quaternion.w();
 
-    // Broadcast Transformation to /tf ros topic
-    static_broadcaster.sendTransform(static_transform_stamped);
+  // Broadcast Transformation to /tf ros topic
+  static_broadcaster.sendTransform(static_transform_stamped);
 
-    // Needed to properly publish to /tf topic
-    ros::spin();
-  }
+  // Needed to properly publish to /tf topic
+  ros::spin();
 }
 
-void TransformationCalculator::DisplayAlingmentResult()
+void TransformationCalculator::DisplayAlignmentResult()
 {
-  if (display_alignment_result)
-  {
-    using pcl::visualization::PointCloudColorHandlerCustom;
-    using pcl::visualization::PointCloudColorHandlerGenericField;
+  using pcl::visualization::PointCloudColorHandlerCustom;
+  using pcl::visualization::PointCloudColorHandlerGenericField;
 
-    pcl::visualization::PCLVisualizer *p = new pcl::visualization::PCLVisualizer("alignment result");
+  pcl::visualization::PCLVisualizer *p = new pcl::visualization::PCLVisualizer("alignment result");
 
-    PointCloudColorHandlerCustom<pcl::PointNormal> cloud_0_h(clouds[0], 0, 255, 0);
-    PointCloudColorHandlerCustom<pcl::PointNormal> cloud_1_h(clouds[1], 255, 0, 0);
+  PointCloudColorHandlerCustom<pcl::PointNormal> cloud_0_h(clouds[0], 0, 255, 0);
+  PointCloudColorHandlerCustom<pcl::PointNormal> cloud_1_h(clouds[1], 255, 0, 0);
 
-    p->addPointCloud(clouds[0], cloud_0_h, "0");
-    p->addPointCloud(clouds[1], cloud_1_h, "1");
-    p->spin();
-  }
+  p->addPointCloud(clouds[0], cloud_0_h, "0");
+  p->addPointCloud(clouds[1], cloud_1_h, "1");
+  p->spin();
 }
 
 int TransformationCalculator::run(int argc, char **argv)
@@ -703,15 +672,39 @@ int TransformationCalculator::run(int argc, char **argv)
   {
     return result;
   }
-  PassthroughFilter();
-  Downsampling();
-  RemoveOutliers();
-  SmoothSurficesMLS();
-  ComputeFPFHFeatures();
-  CoarseManualAlignment();
+  if (passthrough_active)
+  {
+    PassthroughFilter();
+  }
+  if (downsampling_active)
+  {
+    Downsampling();
+  }
+  if (outlier_active)
+  {
+    RemoveOutliers();
+  }
+  if (mls_active)
+  {
+    SmoothSurficesMLS();
+  }
+  if (fpfhalignment_active == true && manualalignment_active == false)
+  {
+    ComputeFPFHFeatures();
+  }
+  if (fpfhalignment_active == false && manualalignment_active == true)
+  {
+    CoarseManualAlignment();
+  }
   IcpAlgorithm();
-  DisplayAlingmentResult();
-  PublishTransformation();
+  if (display_alignment_result)
+  {
+    DisplayAlignmentResult();
+  }
+  if (publishtoros_active)
+  {
+    PublishTransformation();
+  }
   return 0;
 }
 
