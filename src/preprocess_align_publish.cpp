@@ -487,6 +487,7 @@ void TransformationCalculator::ComputeFPFHFeatures()
     // Get transformation matrix
     transform = sc_alignment.getFinalTransformation();
   }
+  pcl::transformPointCloud(*clouds[0], *clouds[0], transform);
 }
 
 void TransformationCalculator::CoarseManualAlignment()
