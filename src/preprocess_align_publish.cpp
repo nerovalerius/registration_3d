@@ -40,7 +40,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <tf2/LinearMath/Quaternion.h> 
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <sensor_msgs/PointCloud2.h>
 
@@ -67,17 +67,8 @@ public:
   }
 };
 
-// ------------------------------------------------------------------------------------------------------------
-//                                                  THE MAIN
-// ------------------------------------------------------------------------------------------------------------
-
-int main(int argc, char **argv)
+class TransformationCalculator final
 {
-
-  // ------------------------------------------------------
-  //  VARIABLES & CLASSES
-  // ------------------------------------------------------
-
   // Step counter
   uint step = 1;
 
@@ -93,31 +84,44 @@ int main(int argc, char **argv)
   // Transformation Matrix for different steps of alignment
   Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
 
-  // Argument-Vector
-  std::vector<std::string> args;
+  // Final Transformation
+  Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity();
 
   // Pointcloud-Vector
   std::vector<pcl::PointCloud<pcl::PointNormal>::Ptr> clouds;
 
-  // ------------------------------------------------------
-  //  START ROS NODE
-  // ------------------------------------------------------
+public:
+  int run(int argc, char **argv);
 
-  // ROS NODE
+private:
+  void StartRosNode(int argc, char **argv);
+  int ProcessArguments(int argc, char **argv);
+  void PassthroughFilter();
+  void Downsampling();
+  void RemoveOutliers();
+  void SmoothSurficesMLS();
+  void ComputeFPFHFeatures();
+  void CoarseManualAlignment();
+  void IcpAlgorithm();
+  void PublishTransformation();
+};
+
+void TransformationCalculator::StartRosNode(int argc, char **argv)
+{
   ros::init(argc, argv, "preprocess_align_publish");
   std::cout << "PREPROCESS_ALIGN_PUBLISH" << std::endl;
+}
 
-
-
-  // ------------------------------------------------------
-  //  PROCESS ARGUMENTS
-  // ------------------------------------------------------
-
+int TransformationCalculator::ProcessArguments(int argc, char **argv)
+{
   if (argc < 2)
   {
     std::cout << "not enough arguments - type --help for more info" << std::endl;
     return -1;
   }
+
+  // Argument-Vector
+  std::vector<std::string> args;
 
   // Parse Arguments
   for (int i = 1; i < argc; i++)
@@ -125,13 +129,14 @@ int main(int argc, char **argv)
     args.push_back(std::string(argv[i]));
   }
 
-
   // Iterate through arguments
-  for (const auto &arg : args) {
+  for (const auto &arg : args)
+  {
     // User needs HELP
-    if (arg.find("help") != std::string::npos) {
+    if (arg.find("help") != std::string::npos)
+    {
       std::cout << "PREPROCESS - ALIGN - PUBLISH"
-                << "\nPCL-Version: " << PCL_VERSION 
+                << "\nPCL-Version: " << PCL_VERSION
                 << "\nThis program is designed to:"
                 << "\n 1a. Read two pointclouds from ros PointCloud2 streams"
                 << "\n 1b. OR read two pointclouds from .pcd files"
@@ -156,8 +161,10 @@ int main(int argc, char **argv)
                 << std::endl;
       return 0;
 
-    // Arguments are point cloud streams? usually contain "points"  and "/cam" in their path
-    } else if (arg.find("points") != std::string::npos && arg.find("/cam") != std::string::npos){      
+      // Arguments are point cloud streams? usually contain "points"  and "/cam" in their path
+    }
+    else if (arg.find("points") != std::string::npos && arg.find("/cam") != std::string::npos)
+    {
 
       // ------------------------------------------------------
       //  STEP 0a - READ POINTCLOUD FROM ROS TOPIC
@@ -175,20 +182,22 @@ int main(int argc, char **argv)
       sensor_msgs::PointCloud2ConstPtr cloud_msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(arg, ros::Duration(10));
       // Convert the catched message into a pointcloud object
       pcl::fromROSMsg(*cloud_msg, *cloud_ptr);
-      
+
       // Copy PointXYZ to PointNormal
       pcl::copyPointCloud(*cloud_ptr, *cloud_ptr_normal);
 
       // Add the point cloud to the list of point clouds
       clouds.push_back(cloud_ptr_normal);
 
-    // Arguments are point cloud streams? usually contain "points" in their path
-    } else if (arg.find(".pcd") != std::string::npos) { 
+      // Arguments are point cloud streams? usually contain "points" in their path
+    }
+    else if (arg.find(".pcd") != std::string::npos)
+    {
 
       // ------------------------------------------------------
       //  STEP 0b - READ POINTCLOUD FROM FILE
       // ------------------------------------------------------
-      
+
       // Output
       std::cout << "STEP " << step << " - READ A POINTCLOUD FROM PCD FILE" << std::endl;
       ++step;
@@ -198,7 +207,8 @@ int main(int argc, char **argv)
       pcl::PointCloud<pcl::PointNormal>::Ptr cloud_ptr_normal(new pcl::PointCloud<pcl::PointNormal>);
 
       // Read Cloud from File
-      if (pcl::io::loadPCDFile<pcl::PointXYZ> (arg, *cloud_ptr) == -1){ 
+      if (pcl::io::loadPCDFile<pcl::PointXYZ>(arg, *cloud_ptr) == -1)
+      {
         std::cout << "could not read " << arg << std::endl;
         return (-1);
       }
@@ -209,74 +219,93 @@ int main(int argc, char **argv)
       // Add the point cloud to the list of point clouds
       clouds.push_back(cloud_ptr_normal);
 
-    // Activate passthrough filter
-    } else if (arg.find("passthrough=true") != std::string::npos) {      
-        passthrough_active = true;
+      // Activate passthrough filter
+    }
+    else if (arg.find("passthrough=true") != std::string::npos)
+    {
+      passthrough_active = true;
 
-    // Activate downsampling
-    } else if (arg.find("downsampling=true") != std::string::npos) {      
-        downsampling_active = true;
+      // Activate downsampling
+    }
+    else if (arg.find("downsampling=true") != std::string::npos)
+    {
+      downsampling_active = true;
 
-    // Activate outlier filtering
-    } else if (arg.find("outlier=true") != std::string::npos) {      
-        outlier_active = true;
+      // Activate outlier filtering
+    }
+    else if (arg.find("outlier=true") != std::string::npos)
+    {
+      outlier_active = true;
 
-    // Activate smoothing
-    } else if (arg.find("mls=true") != std::string::npos) {      
-        mls_active = true;
+      // Activate smoothing
+    }
+    else if (arg.find("mls=true") != std::string::npos)
+    {
+      mls_active = true;
 
-    // Activate manual coarse alignment
-    } else if (arg.find("manualalignment=true") != std::string::npos) {      
-        manualalignment_active = true;
+      // Activate manual coarse alignment
+    }
+    else if (arg.find("manualalignment=true") != std::string::npos)
+    {
+      manualalignment_active = true;
 
-    // Activate publishing to ros tf topics
-    } else if (arg.find("publishtoros=true") != std::string::npos) {      
-        publishtoros_active = true;
+      // Activate publishing to ros tf topics
+    }
+    else if (arg.find("publishtoros=true") != std::string::npos)
+    {
+      publishtoros_active = true;
 
-    // Activate automatic fpfh feature alignment
-    } else if (arg.find("fpfhalignment=true") != std::string::npos) {      
-        fpfhalignment_active = true;
+      // Activate automatic fpfh feature alignment
+    }
+    else if (arg.find("fpfhalignment=true") != std::string::npos)
+    {
+      fpfhalignment_active = true;
 
-    // Activate all steps with manual alignment
-    } else if (arg.find("allstepsmanual=true") != std::string::npos) {       
-        passthrough_active = true;           
-        downsampling_active = true;  
-        outlier_active = true; 
-        mls_active = true;   
-        manualalignment_active = true;   
-        publishtoros_active = true;     
+      // Activate all steps with manual alignment
+    }
+    else if (arg.find("allstepsmanual=true") != std::string::npos)
+    {
+      passthrough_active = true;
+      downsampling_active = true;
+      outlier_active = true;
+      mls_active = true;
+      manualalignment_active = true;
+      publishtoros_active = true;
 
-    // Activate all steps with fpfh feature alignment
-    } else if (arg.find("allstepsfpfh=true") != std::string::npos) {       
-        passthrough_active = true;           
-        downsampling_active = true;  
-        outlier_active = true; 
-        mls_active = true;   
-        fpfhalignment_active = true; 
-        publishtoros_active = true;     
+      // Activate all steps with fpfh feature alignment
+    }
+    else if (arg.find("allstepsfpfh=true") != std::string::npos)
+    {
+      passthrough_active = true;
+      downsampling_active = true;
+      outlier_active = true;
+      mls_active = true;
+      fpfhalignment_active = true;
+      publishtoros_active = true;
 
-    // No proper arguments given
-    } else {
+      // No proper arguments given
+    }
+    else
+    {
       std::cout << "No proper arguments given - type --help for more info " << std::endl;
       return -1;
     }
-
   }
 
   // Got two Pointclouds?
-  if (clouds.size() != 2){
-      std::cout << "No proper pointclouds given" << std::endl;
+  if (clouds.size() != 2)
+  {
+    std::cout << "No proper pointclouds given" << std::endl;
     return -1;
   }
+  return 0;
+}
 
-
-  // ------------------------------------------------------
-  //  PASSTHROUGH_FILTER
-  // ------------------------------------------------------
-
-
+void TransformationCalculator::PassthroughFilter()
+{
   // Active?
-  if (passthrough_active){
+  if (passthrough_active)
+  {
 
     // Output
     std::cout << "STEP " << step << " - PASSTHROUGH_FILTER" << std::endl;
@@ -296,15 +325,13 @@ int main(int argc, char **argv)
       passthrough_filter.filter(*cloud);
     }
   }
+}
 
-
-  // ------------------------------------------------------
-  //  DOWNSAMPLING
-  // ------------------------------------------------------
-
-
+void TransformationCalculator::Downsampling()
+{
   // Active?
-  if (downsampling_active){
+  if (downsampling_active)
+  {
     // Output
     std::cout << "STEP " << step << " - DOWNSAMPLING" << std::endl;
     ++step;
@@ -323,14 +350,13 @@ int main(int argc, char **argv)
       voxelgrid_filter.filter(*cloud);
     }
   }
+}
 
-
-  // ------------------------------------------------------
-  //  REMOVE OUTLIERS
-  // ------------------------------------------------------
-
+void TransformationCalculator::RemoveOutliers()
+{
   // Active ?
-  if (outlier_active){
+  if (outlier_active)
+  {
     // Output
     std::cout << "STEP " << step << " - REMOVE OUTLIERS" << std::endl;
     ++step;
@@ -347,15 +373,13 @@ int main(int argc, char **argv)
       outlier_filter.filter(*cloud);
     }
   }
+}
 
-
-  // ------------------------------------------------------
-  //  SMOOTHE SURFACES - MLS
-  // ------------------------------------------------------
-
-
+void TransformationCalculator::SmoothSurficesMLS()
+{
   // Active ?
-  if (mls_active){
+  if (mls_active)
+  {
     // Output
     std::cout << "STEP " << step << " - SMOOTHE SURFACES" << std::endl;
     ++step;
@@ -371,7 +395,8 @@ int main(int argc, char **argv)
     mls_smoothing.setSearchRadius(0.03);
 
     // Apply moving least squares algorithm
-    for (auto &cloud : clouds) {
+    for (auto &cloud : clouds)
+    {
 
       mls_smoothing.setInputCloud(cloud);
 
@@ -381,29 +406,24 @@ int main(int argc, char **argv)
       *cloud = smoothed_cloud;
 
       std::vector<int> indices;
-      
+
       // Otherwise ICP would throw an Inf / NaN Error
-      if (!cloud->is_dense){
+      if (!cloud->is_dense)
+      {
         pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
       }
 
       // Otherwise ICP would throw an Inf / NaN Error
       pcl::removeNaNNormalsFromPointCloud(*cloud, *cloud, indices);
-
     }
   }
+}
 
-
-  // ------------------------------------------------------
-  //  COMPUTE FPFH FEATURES AND ALIGN VIA SAMPLE CONSENSUS INITIAL ALIGNMENT
-  // ------------------------------------------------------
-
-  // ----------------------
-  //  COMPUTE FPFH FEATURES
-  // ----------------------
-
+void TransformationCalculator::ComputeFPFHFeatures()
+{
   // Active ?
-  if (fpfhalignment_active == true && manualalignment_active == false){
+  if (fpfhalignment_active == true && manualalignment_active == false)
+  {
     // Output
     std::cout << "STEP " << step << " - COMPUTE FPFH FEATURES" << std::endl;
     ++step;
@@ -415,31 +435,30 @@ int main(int argc, char **argv)
     pcl::FPFHEstimation<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> fpfh;
 
     // Search tree
-    pcl::search::KdTree<pcl::PointNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointNormal>);
+    pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
 
     // Define tree as search method
-    fpfh.setSearchMethod (tree);
+    fpfh.setSearchMethod(tree);
 
     // Use all neighbors inside 5cm radius
-    fpfh.setRadiusSearch (0.05);
+    fpfh.setRadiusSearch(0.05);
 
     // Compute FPFH Features
-    for (auto &cloud : clouds){
+    for (auto &cloud : clouds)
+    {
 
       // Set cloud and its normals
-      fpfh.setInputCloud (cloud);
+      fpfh.setInputCloud(cloud);
       fpfh.setInputNormals(cloud);
 
       // Output datasets
-      pcl::PointCloud<pcl::FPFHSignature33>::Ptr fpfh_feature (new pcl::PointCloud<pcl::FPFHSignature33> ());
+      pcl::PointCloud<pcl::FPFHSignature33>::Ptr fpfh_feature(new pcl::PointCloud<pcl::FPFHSignature33>());
 
       // Compute the features
-      fpfh.compute (*fpfh_feature);
+      fpfh.compute(*fpfh_feature);
 
       fpfh_features.push_back(fpfh_feature);
-
     }
-
 
     // ----------------------
     //  SAMPLE CONSENSUS INITIAL ALIGNMENT
@@ -453,34 +472,32 @@ int main(int argc, char **argv)
     pcl::PointCloud<pcl::PointNormal> sc_aligned_cloud;
 
     // Sample Consensus alignment method with fpfh features
-    pcl::SampleConsensusInitialAlignment< pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> sc_alignment; 
+    pcl::SampleConsensusInitialAlignment<pcl::PointNormal, pcl::PointNormal, pcl::FPFHSignature33> sc_alignment;
 
     // Set input and output clouds and features
     sc_alignment.setInputSource(clouds.at(0));
-    sc_alignment.setSourceFeatures (fpfh_features.at(0));
+    sc_alignment.setSourceFeatures(fpfh_features.at(0));
 
-    sc_alignment.setInputTarget (clouds.at(1));
-    sc_alignment.setTargetFeatures (fpfh_features.at(1));
+    sc_alignment.setInputTarget(clouds.at(1));
+    sc_alignment.setTargetFeatures(fpfh_features.at(1));
 
     // Align via fpfh features
     sc_alignment.align(sc_aligned_cloud);
-  
+
     // Get transformation matrix
-    transform = sc_alignment.getFinalTransformation ();
-
+    transform = sc_alignment.getFinalTransformation();
   }
+}
 
-
-  // ------------------------------------------------------
-  //  COARSE MANUAL ALIGNMENT
-  // ------------------------------------------------------
-
-  // Rotation Matrices
-  Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
-  Eigen::Matrix4f transform_z = Eigen::Matrix4f::Identity();
-
+void TransformationCalculator::CoarseManualAlignment()
+{
   // Active?
-  if (fpfhalignment_active == false && manualalignment_active == true){
+  if (fpfhalignment_active == false && manualalignment_active == true)
+  {
+    // Rotation Matrices
+    Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f transform_z = Eigen::Matrix4f::Identity();
+
     // Output
     std::cout << "STEP " << step << " - COARSE MANUAL ALIGNMENT" << std::endl;
     ++step;
@@ -507,23 +524,19 @@ int main(int argc, char **argv)
     transform_z(2, 2) = 1;
     transform_z(3, 3) = 1;
 
-
     // complete transformation
     transform = transform_z * transform_x;
 
     // Apply 180 rotation - Z axis
     pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), transform);
-
-
   }
-  
-  
-  // ------------------------------------------------------
-  //  ITERATIVE CLOSEST POINT ALGORITHM
-  // ------------------------------------------------------
+}
 
+void TransformationCalculator::IcpAlgorithm()
+{
   // Output
-  std::cout << "STEP " << step << " - ITERATIVE CLOSEST POINT ALGORITHM\n" << std::endl;
+  std::cout << "STEP " << step << " - ITERATIVE CLOSEST POINT ALGORITHM\n"
+            << std::endl;
   ++step;
 
   //Points with x, y, z, curvature
@@ -542,13 +555,10 @@ int main(int argc, char **argv)
   // Set PointXYZC as representation inside the registration method
   icp_nonlinear.setPointRepresentation(boost::make_shared<const PointCurvature>(point_xyzc));
 
-
   // Set both pointclouds - in order to align them
   icp_nonlinear.setInputSource(clouds.at(0));
   icp_nonlinear.setInputTarget(clouds.at(1));
 
-  // Final Transformation
-  Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity();
   Eigen::Matrix4f prev;
 
   // New Pointcloud for transformed source cloud
@@ -556,13 +566,13 @@ int main(int argc, char **argv)
 
   // set max iterations per loop
   icp_nonlinear.setMaximumIterations(2);
-  
+
   int icp_loop_count;
   double fitness_score_limit = 0.006;
 
   std::cout << "Fitness Score Limit: " << fitness_score_limit << std::endl;
 
-  // Iterate two times each loop 
+  // Iterate two times each loop
   for (icp_loop_count = 0; icp_loop_count < 30; ++icp_loop_count)
   {
 
@@ -579,35 +589,38 @@ int main(int argc, char **argv)
       icp_nonlinear.setMaxCorrespondenceDistance(icp_nonlinear.getMaxCorrespondenceDistance() - 0.001);
     }
 
-    // T(i-1) 
+    // T(i-1)
     prev = icp_nonlinear.getLastIncrementalTransformation();
 
-    if((icp_loop_count * icp_nonlinear.getMaximumIterations()) % 10 == 0){
-        // Fitness Score
-        std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
-                  << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
+    if ((icp_loop_count * icp_nonlinear.getMaximumIterations()) % 10 == 0)
+    {
+      // Fitness Score
+      std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
+                << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
     }
 
-    if (icp_nonlinear.getFitnessScore() < fitness_score_limit){
+    if (icp_nonlinear.getFitnessScore() < fitness_score_limit)
+    {
       break;
     }
-
   }
 
   std::cout << "\nICP Iterations: " << icp_nonlinear.getMaximumIterations() * icp_loop_count << std::endl;
 
   // Final Transformation
-  std::cout << "\nFinal Transformation:\n" << Ti << "\n" << std::endl;
+  std::cout << "\nFinal Transformation:\n"
+            << Ti << "\n"
+            << std::endl;
+}
 
-
-  // ------------------------------------------------------
-  //  PUBLISH TRANSFORMATION MATRIX TO TF TOPICS
-  // ------------------------------------------------------
-
+void TransformationCalculator::PublishTransformation()
+{
   // Active?
-  if (publishtoros_active){
+  if (publishtoros_active)
+  {
     // Output
-    std::cout << "STEP " << step <<" - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n" << std::endl;
+    std::cout << "STEP " << step << " - PUBLISH TRANSFORMATION MATRIX TO ROS TF TOPICS\n"
+              << std::endl;
     ++step;
 
     // Dont forget the coarse pre-alignment from above! - Only if coarse pre-alignment was performed, otherwise transform_z and _x should be identity matrix
@@ -619,18 +632,16 @@ int main(int argc, char **argv)
     // Write aligned cloud to file
     pcl::io::savePCDFileASCII("./temporal_test_cloud.pcd", *clouds.at(0));
 
-    
     // Rotation Matrix
     tf2::Matrix3x3 rotation_matrix;
-    rotation_matrix.setValue(T(0,0), T(0,1), T(0,2),
-                      T(1,0), T(1,1), T(1,2),
-                      T(2,0), T(2,1), T(2,2)
-    );
+    rotation_matrix.setValue(T(0, 0), T(0, 1), T(0, 2),
+                             T(1, 0), T(1, 1), T(1, 2),
+                             T(2, 0), T(2, 1), T(2, 2));
 
     // Calculate Quaternions
     tf2::Quaternion quaternion;
     rotation_matrix.getRotation(quaternion);
-  
+
     // Broadcast to tf_static topic
     static tf2_ros::StaticTransformBroadcaster static_broadcaster;
     geometry_msgs::TransformStamped static_transform_stamped;
@@ -639,10 +650,10 @@ int main(int argc, char **argv)
     static_transform_stamped.child_frame_id = "cam_1_depth_optical_frame";
 
     // Translation Vector
-    static_transform_stamped.transform.translation.x = T(0,3);
-    static_transform_stamped.transform.translation.y = T(1,3);
-    static_transform_stamped.transform.translation.z = T(2,3);
-    
+    static_transform_stamped.transform.translation.x = T(0, 3);
+    static_transform_stamped.transform.translation.y = T(1, 3);
+    static_transform_stamped.transform.translation.z = T(2, 3);
+
     // Rotation
     static_transform_stamped.transform.rotation.x = quaternion.x();
     static_transform_stamped.transform.rotation.y = quaternion.y();
@@ -654,13 +665,35 @@ int main(int argc, char **argv)
 
     // Needed to properly publish to /tf topic
     ros::spin();
-
   }
+}
 
-  // ------------------------------------------------------
-  //  END
-  // ------------------------------------------------------
-
+int TransformationCalculator::run(int argc, char **argv)
+{
+  StartRosNode(argc, argv);
+  int result = ProcessArguments(argc, argv);
+  if (result != 0)
+  {
+    return result;
+  }
+  PassthroughFilter();
+  Downsampling();
+  RemoveOutliers();
+  SmoothSurficesMLS();
+  ComputeFPFHFeatures();
+  CoarseManualAlignment();
+  IcpAlgorithm();
+  PublishTransformation();
   return 0;
+}
 
+// ------------------------------------------------------------------------------------------------------------
+//                                                  THE MAIN
+// ------------------------------------------------------------------------------------------------------------
+
+int main(int argc, char **argv)
+{
+
+  TransformationCalculator calculator;
+  return calculator.run(argc, argv);
 }
