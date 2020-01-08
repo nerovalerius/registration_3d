@@ -43,6 +43,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <sensor_msgs/PointCloud2.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 // Nonlinear ICP also uses curvature - crete own Point class with x, y, z, curvature
 class PointCurvature : public pcl::PointRepresentation<pcl::PointNormal>
@@ -80,6 +81,7 @@ class TransformationCalculator final
   bool manualalignment_active = false;
   bool publishtoros_active = false;
   bool fpfhalignment_active = false;
+  bool display_alignment_result = false;
 
   // Transformation Matrix for different steps of alignment
   Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
@@ -104,6 +106,7 @@ private:
   void CoarseManualAlignment();
   void IcpAlgorithm();
   void PublishTransformation();
+  void DisplayAlingmentResult();
 };
 
 void TransformationCalculator::StartRosNode(int argc, char **argv)
@@ -158,6 +161,7 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
                 << "\n   * mls=true\t\t\t\t\t - activates mls_smoothing"
                 << "\n   * manualalignment=true OR fpfhalignment=true\t - activates manual or fpfh feature pre alignment"
                 << "\n   * publishtoros=true\t\t\t\t - activates quaternion transformation publishing to ros /tf topic"
+                << "\n   * displayresult=true\t\t\t\t - displays alignment result"
                 << std::endl;
       return 0;
 
@@ -284,6 +288,10 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
       publishtoros_active = true;
 
       // No proper arguments given
+    }
+    else if (arg.find("displayresult=true") != std::string::npos)
+    {
+      display_alignment_result = true;
     }
     else
     {
@@ -669,6 +677,24 @@ void TransformationCalculator::PublishTransformation()
   }
 }
 
+void TransformationCalculator::DisplayAlingmentResult()
+{
+  if (display_alignment_result)
+  {
+    using pcl::visualization::PointCloudColorHandlerCustom;
+    using pcl::visualization::PointCloudColorHandlerGenericField;
+
+    pcl::visualization::PCLVisualizer *p = new pcl::visualization::PCLVisualizer("alignment result");
+
+    PointCloudColorHandlerCustom<pcl::PointNormal> cloud_0_h(clouds[0], 0, 255, 0);
+    PointCloudColorHandlerCustom<pcl::PointNormal> cloud_1_h(clouds[1], 255, 0, 0);
+
+    p->addPointCloud(clouds[0], cloud_0_h, "0");
+    p->addPointCloud(clouds[1], cloud_1_h, "1");
+    p->spin();
+  }
+}
+
 int TransformationCalculator::run(int argc, char **argv)
 {
   StartRosNode(argc, argv);
@@ -684,6 +710,7 @@ int TransformationCalculator::run(int argc, char **argv)
   ComputeFPFHFeatures();
   CoarseManualAlignment();
   IcpAlgorithm();
+  DisplayAlingmentResult();
   PublishTransformation();
   return 0;
 }

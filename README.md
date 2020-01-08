@@ -27,8 +27,9 @@ This program is designed to:
  1b. OR read two pointclouds from .pcd files  
  2. Downsample and filter both pointclouds  
  3. Smooth Surfaces and make a coarse alignment  
- 4. Apply an iterative closest point algorithm 
+ 4. Apply an iterative closest point algorithm
  5. Publish the Transformation Matrix to the ros /tf topic
+ 6. Display the alignment result
  
  ---------------------------------------------------------
  The following arguments read two point clouds:
@@ -50,6 +51,7 @@ This program is designed to:
    * mls=true                                    - activates mls_smoothing  - CURRENTLY only usable with downsampling and passthrough
    * manualalignment=true OR fpfhalignment=true  - activates manual or fpfh feature pre alignment
    * publishtoros=true                           - activates quaternion transformation publishing to ros /tf topic
+   * displayresult=true				                   - displays alignment result
 
  ---------------------------------------------------------
  This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
