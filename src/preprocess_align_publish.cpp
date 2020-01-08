@@ -29,6 +29,7 @@
 
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
+#include <pcl/registration/gicp.h>
 #include <pcl/registration/transforms.h>
 #include <pcl/registration/ia_ransac.h>
 
@@ -68,6 +69,14 @@ public:
   }
 };
 
+enum class AlignmentAlgorithm
+{
+  fpfh,
+  icp,
+  gicp,
+  nlicp
+};
+
 class TransformationCalculator final
 {
   // Step counter
@@ -82,6 +91,9 @@ class TransformationCalculator final
   bool publishtoros_active = false;
   bool fpfhalignment_active = false;
   bool display_alignment_result = false;
+
+  //used algorithm
+  AlignmentAlgorithm algorithm = AlignmentAlgorithm::fpfh;
 
   // Transformation Matrix for different steps of alignment
   Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
@@ -104,7 +116,10 @@ private:
   void SmoothSurficesMLS();
   void ComputeFPFHFeatures();
   void CoarseManualAlignment();
-  void IcpAlgorithm();
+  void IcpAlignment(pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> &icp);
+  void IcpAlignment();
+  void GeneralizedIcpAlignment();
+  void NonlinearIcpAlignment();
   void PublishTransformation();
   void DisplayAlignmentResult();
 };
@@ -145,21 +160,26 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
                 << "\n 1b. OR read two pointclouds from .pcd files"
                 << "\n 2. Downsample and filter both pointclouds"
                 << "\n 3. Smooth Surfaces and make a coarse alignment"
-                << "\n 4. Apply an iterative closest point algorithm"
+                << "\n 4. Apply an alignment algorithm"
                 << "\n 5. Publish the Transformation Matrix to the ros /tf topic"
                 << "\n ---------------------------------------------------------"
-                << "\n Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>"
-                << "\n OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>"
+                << "\n Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic> algorithm=<alignment_alogrithm>"
+                << "\n OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd> algorithm=<alignment_alogrithm>"
                 << "\n Usually: /cam_1/depth/color/points and /cam_2/depth/color/points"
+                << "\n alignment_alogrithm has to be on of the following:"
+                << "\n   * icp - regular icp"
+                << "\n   * gicp - generalized icp"
+                << "\n   * nlicp - nonlinear icp"
+                << "\n   * fpfh - Fast Point Feature Histogram (default)"
                 << "\n This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files"
                 << "\n ---------------------------------------------------------"
                 << "\n The following arguments activate the single steps:"
-                << "\n   * allstepsfpfh=true OR allstepsmanual=true\t - activates all steps with manual or fpfh feature pre alignment"
+                << "\n   * allsteps=true \t\t\t\t - activates all preprocessing steps"
                 << "\n   * passthrough=true\t\t\t\t - activates passthrough filter"
                 << "\n   * downsampling=true\t\t\t\t - activates downsampling"
                 << "\n   * outlier=true\t\t\t\t - activates outlier filter"
                 << "\n   * mls=true\t\t\t\t\t - activates mls_smoothing"
-                << "\n   * manualalignment=true OR fpfhalignment=true\t - activates manual or fpfh feature pre alignment"
+                << "\n   * manualalignment=true \t\t\t\t - activates manual pre alignment. only used with icp variants"
                 << "\n   * publishtoros=true\t\t\t\t - activates quaternion transformation publishing to ros /tf topic"
                 << "\n   * displayresult=true\t\t\t\t - displays alignment result"
                 << std::endl;
@@ -265,9 +285,9 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
     {
       fpfhalignment_active = true;
 
-      // Activate all steps with manual alignment
+      // Activate all preprocessing steps
     }
-    else if (arg.find("allstepsmanual=true") != std::string::npos)
+    else if (arg.find("allsteps=true") != std::string::npos)
     {
       passthrough_active = true;
       downsampling_active = true;
@@ -275,23 +295,26 @@ int TransformationCalculator::ProcessArguments(int argc, char **argv)
       mls_active = true;
       manualalignment_active = true;
       publishtoros_active = true;
-
-      // Activate all steps with fpfh feature alignment
-    }
-    else if (arg.find("allstepsfpfh=true") != std::string::npos)
-    {
-      passthrough_active = true;
-      downsampling_active = true;
-      outlier_active = true;
-      mls_active = true;
-      fpfhalignment_active = true;
-      publishtoros_active = true;
-
-      // No proper arguments given
     }
     else if (arg.find("displayresult=true") != std::string::npos)
     {
       display_alignment_result = true;
+    }
+    else if (arg.find("algorithm=fpfh") != std::string::npos)
+    {
+      algorithm = AlignmentAlgorithm::fpfh;
+    }
+    else if (arg.find("algorithm=icp") != std::string::npos)
+    {
+      algorithm = AlignmentAlgorithm::icp;
+    }
+    else if (arg.find("algorithm=gicp") != std::string::npos)
+    {
+      algorithm = AlignmentAlgorithm::gicp;
+    }
+    else if (arg.find("algorithm=nlicp") != std::string::npos)
+    {
+      algorithm = AlignmentAlgorithm::nlicp;
     }
     else
     {
@@ -374,7 +397,7 @@ void TransformationCalculator::RemoveOutliers()
 void TransformationCalculator::SmoothSurficesMLS()
 {
   // Output
-  std::cout << "STEP " << step << " - SMOOTHE SURFACES" << std::endl;
+  std::cout << "STEP " << step << " - SMOOTH SURFACES" << std::endl;
   ++step;
 
   // KD-Tree as search method for moving least squares algorithm
@@ -517,7 +540,7 @@ void TransformationCalculator::CoarseManualAlignment()
   pcl::transformPointCloud(*clouds.at(0), *clouds.at(0), transform);
 }
 
-void TransformationCalculator::IcpAlgorithm()
+void TransformationCalculator::IcpAlignment(pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> &icp)
 {
   // Output
   std::cout << "STEP " << step << " - ITERATIVE CLOSEST POINT ALGORITHM\n"
@@ -530,19 +553,16 @@ void TransformationCalculator::IcpAlgorithm()
   float weight[4] = {1.0, 1.0, 1.0, 1.0};
   point_xyzc.setRescaleValues(weight);
 
-  // Configure the ICP algorithm
-  pcl::IterativeClosestPointNonLinear<pcl::PointNormal, pcl::PointNormal> icp_nonlinear;
-
   // Maximum distance between two point correspondences - 0.000001 = 10cm
-  icp_nonlinear.setTransformationEpsilon(1e-6);
-  icp_nonlinear.setMaxCorrespondenceDistance(0.3);
+  icp.setTransformationEpsilon(1e-6);
+  icp.setMaxCorrespondenceDistance(0.3);
 
   // Set PointXYZC as representation inside the registration method
-  icp_nonlinear.setPointRepresentation(boost::make_shared<const PointCurvature>(point_xyzc));
+  icp.setPointRepresentation(boost::make_shared<const PointCurvature>(point_xyzc));
 
   // Set both pointclouds - in order to align them
-  icp_nonlinear.setInputSource(clouds.at(0));
-  icp_nonlinear.setInputTarget(clouds.at(1));
+  icp.setInputSource(clouds.at(0));
+  icp.setInputTarget(clouds.at(1));
 
   Eigen::Matrix4f prev;
 
@@ -550,7 +570,7 @@ void TransformationCalculator::IcpAlgorithm()
   auto source_transformed(clouds.at(0));
 
   // set max iterations per loop
-  icp_nonlinear.setMaximumIterations(2);
+  icp.setMaximumIterations(2);
 
   int icp_loop_count;
   double fitness_score_limit = 0.006;
@@ -562,40 +582,56 @@ void TransformationCalculator::IcpAlgorithm()
   {
 
     // Estimate the next transformation Ti (only 2 iterations)
-    icp_nonlinear.setInputSource(clouds.at(0));
-    icp_nonlinear.align(*source_transformed);
+    icp.setInputSource(clouds.at(0));
+    icp.align(*source_transformed);
 
     // Accumulate transformation between each Iteration
-    Ti = icp_nonlinear.getFinalTransformation() * Ti;
+    Ti = icp.getFinalTransformation() * Ti;
 
     // reduce distance between correspondending points each time, the resulting transformation Ti is smaller then threshold
-    if (std::abs((icp_nonlinear.getLastIncrementalTransformation() - prev).sum()) < icp_nonlinear.getTransformationEpsilon())
+    if (std::abs((icp.getLastIncrementalTransformation() - prev).sum()) < icp.getTransformationEpsilon())
     {
-      icp_nonlinear.setMaxCorrespondenceDistance(icp_nonlinear.getMaxCorrespondenceDistance() - 0.001);
+      icp.setMaxCorrespondenceDistance(icp.getMaxCorrespondenceDistance() - 0.001);
     }
 
     // T(i-1)
-    prev = icp_nonlinear.getLastIncrementalTransformation();
+    prev = icp.getLastIncrementalTransformation();
 
-    if ((icp_loop_count * icp_nonlinear.getMaximumIterations()) % 10 == 0)
+    if ((icp_loop_count * icp.getMaximumIterations()) % 10 == 0)
     {
       // Fitness Score
-      std::cout << "Iteration: " << (icp_loop_count * icp_nonlinear.getMaximumIterations())
-                << " - Fitness Score: " << icp_nonlinear.getFitnessScore() << std::endl;
+      std::cout << "Iteration: " << (icp_loop_count * icp.getMaximumIterations())
+                << " - Fitness Score: " << icp.getFitnessScore() << std::endl;
     }
 
-    if (icp_nonlinear.getFitnessScore() < fitness_score_limit)
+    if (icp.getFitnessScore() < fitness_score_limit)
     {
       break;
     }
   }
 
-  std::cout << "\nICP Iterations: " << icp_nonlinear.getMaximumIterations() * icp_loop_count << std::endl;
+  std::cout << "\nICP Iterations: " << icp.getMaximumIterations() * icp_loop_count << std::endl;
 
   // Final Transformation
-  std::cout << "\nFinal Transformation:\n"
+  std::cout << "\nFinal ICP Transformation:\n"
             << Ti << "\n"
             << std::endl;
+}
+void TransformationCalculator::IcpAlignment()
+{
+  pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
+  IcpAlignment(icp);
+}
+void TransformationCalculator::GeneralizedIcpAlignment()
+{
+  pcl::GeneralizedIterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
+  IcpAlignment(icp);
+}
+
+void TransformationCalculator::NonlinearIcpAlignment()
+{
+  pcl::IterativeClosestPointNonLinear<pcl::PointNormal, pcl::PointNormal> icp_nonlinear;
+  IcpAlignment(icp_nonlinear);
 }
 
 void TransformationCalculator::PublishTransformation()
@@ -607,6 +643,10 @@ void TransformationCalculator::PublishTransformation()
 
   // Dont forget the coarse pre-alignment from above! - Only if coarse pre-alignment was performed, otherwise transform_z and _x should be identity matrix
   Eigen::Matrix4f T = Ti * transform;
+
+  std::cout << "\nComplete Transformation:\n"
+            << T << "\n"
+            << std::endl;
 
   // Concatenate both point clouds
   *clouds.at(0) += *clouds.at(1);
@@ -688,15 +728,35 @@ int TransformationCalculator::run(int argc, char **argv)
   {
     SmoothSurficesMLS();
   }
-  if (fpfhalignment_active == true && manualalignment_active == false)
+  if (algorithm == AlignmentAlgorithm::fpfh)
   {
     ComputeFPFHFeatures();
   }
-  if (fpfhalignment_active == false && manualalignment_active == true)
+  else
   {
-    CoarseManualAlignment();
+    if (manualalignment_active == true)
+    {
+      CoarseManualAlignment();
+    }
+    if (algorithm == AlignmentAlgorithm::icp)
+    {
+      IcpAlignment();
+    }
+    else if (algorithm == AlignmentAlgorithm::gicp)
+    {
+      GeneralizedIcpAlignment();
+    }
+    else if (algorithm == AlignmentAlgorithm::nlicp)
+    {
+      NonlinearIcpAlignment();
+    }
+    else
+    {
+      std::cout << "unknown algorithm" << std::endl;
+      return -1;
+    }
   }
-  IcpAlgorithm();
+
   if (display_alignment_result)
   {
     DisplayAlignmentResult();
