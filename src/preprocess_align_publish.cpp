@@ -113,7 +113,7 @@ private:
   void PassthroughFilter();
   void Downsampling();
   void RemoveOutliers();
-  void SmoothSurficesMLS();
+  void SmoothSurfacesMLS();
   void ComputeFPFHFeatures();
   void CoarseManualAlignment();
   void IcpAlignment(pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> &icp);
@@ -396,7 +396,7 @@ void TransformationCalculator::RemoveOutliers()
   }
 }
 
-void TransformationCalculator::SmoothSurficesMLS()
+void TransformationCalculator::SmoothSurfacesMLS()
 {
   // Output
   std::cout << "STEP " << step << " - SMOOTH SURFACES" << std::endl;
@@ -575,12 +575,12 @@ void TransformationCalculator::IcpAlignment(pcl::IterativeClosestPoint<pcl::Poin
   icp.setMaximumIterations(2);
 
   int icp_loop_count;
-  double fitness_score_limit = 0.006;
+  double fitness_score_limit = 0.000; // how well should both point clouds be aligned?
 
   std::cout << "Fitness Score Limit: " << fitness_score_limit << std::endl;
 
   // Iterate two times each loop
-  for (icp_loop_count = 0; icp_loop_count < 30; ++icp_loop_count)
+  for (icp_loop_count = 1; icp_loop_count <= 30; ++icp_loop_count)
   {
 
     // Estimate the next transformation Ti (only 2 iterations)
@@ -599,7 +599,7 @@ void TransformationCalculator::IcpAlignment(pcl::IterativeClosestPoint<pcl::Poin
     // T(i-1)
     prev = icp.getLastIncrementalTransformation();
 
-    if ((icp_loop_count * icp.getMaximumIterations()) % 10 == 0)
+    if ((icp_loop_count * icp.getMaximumIterations()) % 2 == 0)
     {
       // Fitness Score
       std::cout << "Iteration: " << (icp_loop_count * icp.getMaximumIterations())
@@ -650,11 +650,15 @@ void TransformationCalculator::PublishTransformation()
             << T << "\n"
             << std::endl;
 
+  // save both clouds separately
+  pcl::io::savePCDFileASCII("./temp_cloud_source.pcd", *clouds.at(0));
+  pcl::io::savePCDFileASCII("./temp_cloud_target.pcd", *clouds.at(1));
+
   // Concatenate both point clouds
   *clouds.at(0) += *clouds.at(1);
 
-  // Write aligned cloud to file
-  pcl::io::savePCDFileASCII("./temporal_test_cloud.pcd", *clouds.at(0));
+  // save both clouds as one
+  pcl::io::savePCDFileASCII("./temp_cloud_both.pcd", *clouds.at(0));
 
   // Rotation Matrix
   tf2::Matrix3x3 rotation_matrix;
@@ -728,7 +732,7 @@ int TransformationCalculator::run(int argc, char **argv)
   }
   if (mls_active)
   {
-    SmoothSurficesMLS();
+    SmoothSurfacesMLS();
   }
   if (algorithm == AlignmentAlgorithm::fpfh)
   {
