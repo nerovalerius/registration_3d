@@ -713,10 +713,15 @@ void TransformationCalculator::DisplayAlignmentResult()
 int TransformationCalculator::run(int argc, char **argv)
 {
   StartRosNode(argc, argv);
-  auto [should_continue, result] = ProcessArguments(argc, argv);
-  if (!should_continue)
+  //auto [should_continue, result] = ProcessArguments(argc, argv); //requires c++17
+  //if (!should_continue)
+  //{
+  //  return result;
+  //}
+  auto result = ProcessArguments(argc, argv);
+  if (!result.first)
   {
-    return result;
+    return result.second;
   }
   if (passthrough_active)
   {
