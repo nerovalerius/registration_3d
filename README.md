@@ -10,6 +10,13 @@ on the two images. The resulting transformation is then applied via ros /tf topi
 
 Simply clone this git into your ros_workspace/src folder and build it with catkin_make.
 
+
+## Fully automated start script
+This script starts both 3d cam nodes, aligns their pointclouds via rostopic tf, vizualises the result in rviz
+Parameters to set:
+1. The serialnumbers of your 3d cams inside the start_3d_cams.launch file
+2. The coarse manual transformation of both cams before fully aligning them via the ICP -> void TransformationCalculator::CoarseManualAlignment() inside preprocess_align_publish.cpp
+
 ## launch/start_3d_cams.launch
 Starts both intel D435i ROS Nodes. Change serial numbers inside this launch file to fit your models.
 

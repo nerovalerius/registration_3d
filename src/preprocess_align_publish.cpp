@@ -505,6 +505,11 @@ void TransformationCalculator::ComputeFPFHFeatures()
 
 void TransformationCalculator::CoarseManualAlignment()
 {
+
+  // This manual transformation performs a coarse alignment between the two 3d-cameras in order for the icp to work.
+  // we know that we mounted the cameras looking to each other = 180° rotation in Z axis
+  // and we know that the cameras look 45° downwards = rotation -45° in X axis
+
   // Rotation Matrices
   Eigen::Matrix4f transform_x = Eigen::Matrix4f::Identity();
   Eigen::Matrix4f transform_z = Eigen::Matrix4f::Identity();
@@ -651,14 +656,14 @@ void TransformationCalculator::PublishTransformation()
             << std::endl;
 
   // save both clouds separately
-  pcl::io::savePCDFileASCII("./temp_cloud_source.pcd", *clouds.at(0));
-  pcl::io::savePCDFileASCII("./temp_cloud_target.pcd", *clouds.at(1));
+  // pcl::io::savePCDFileASCII("./temp_cloud_source.pcd", *clouds.at(0));
+  // pcl::io::savePCDFileASCII("./temp_cloud_target.pcd", *clouds.at(1));
 
   // Concatenate both point clouds
   *clouds.at(0) += *clouds.at(1);
 
   // save both clouds as one
-  pcl::io::savePCDFileASCII("./temp_cloud_both.pcd", *clouds.at(0));
+  // pcl::io::savePCDFileASCII("./temp_cloud_both.pcd", *clouds.at(0));
 
   // Rotation Matrix
   tf2::Matrix3x3 rotation_matrix;
