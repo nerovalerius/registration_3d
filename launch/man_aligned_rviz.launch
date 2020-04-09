@@ -4,5 +4,5 @@
     <!-- Perform coordinate transform from cam_1_link relative to world frame -->
     <node type="static_transform_publisher" name="static_transform_world_cam_1" pkg="tf" args="1.0 0.0 2.9 0.0311474473239 -0.891296151451 0.0487023250985 -0.449721125214 world_frame cam_1_link 9" />
     <!-- Start rviz with predefined config: added both Intel Pointcloud Streams and set world_frame as frame -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find perception)/config/man_aligned.rviz" />
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find registration_3d)/config/man_aligned.rviz" />
 </launch>
