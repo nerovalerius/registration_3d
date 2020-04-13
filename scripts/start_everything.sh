@@ -14,7 +14,7 @@ gnome-terminal -e "bash -c 'rosrun registration_3d preprocess_align_publish alls
 sleep 1
 
 echo "Aligning second 3D Cam to Desk"
-gnome-terminal -e "rosrun tf static_transform_publisher 0.5 -1.0 -1.6 -1.0 -0.1 0.0 3.0 world_frame cam_2_depth_optical_frame 3"
+gnome-terminal -e "rosrun tf static_transform_publisher 0.5 -1.0 -1.6 -1.0 -0.1 0.0 3.0 world cam_2_depth_optical_frame 3"
 
 echo "Starting RVIZ"
 gnome-terminal -e "bash -c 'roslaunch registration_3d rviz_with_both_cams.launch'"
