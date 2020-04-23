@@ -36,7 +36,7 @@ main(int	argc,	char**	argv) {
 
     // Save 1 Pointcloud Message into Message object
     sensor_msgs::PointCloud2ConstPtr cloud_1_msg =   ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/cam_1/depth/color/points", ros::Duration(10));
-    sensor_msgs::PointCloud2ConstPtr cloud_2_msg =   ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/cam_2/depth/color/points", ros::Duration(10));
+    sensor_msgs::PointCloud2ConstPtr cloud_2_msg =   ros::topic::waitForMessage<sensor_msgs::PointCloud2>("/cam_1/depth/color/points_processed", ros::Duration(10));
 
 
     // Convert from ROS Topic to point cloud object
@@ -55,16 +55,14 @@ main(int	argc,	char**	argv) {
 //    transform(2,2) = 1;
 //    transform(3,3) = 1;
 //
+    // Rotate and translate the point cloud 
     pcl::PointCloud<pcl::PointXYZ> transformedCloud;
-
-
     pcl::transformPointCloud (cloud_2, transformedCloud, transform);
 
 
-
-    // Save the PointClouds into a file
+    // Save Pointclouds to files
     pcl::io::savePCDFileASCII("./cam_1.pcd", cloud_1);
-    pcl::io::savePCDFileASCII("./cam_2.pcd", cloud_2);
+    pcl::io::savePCDFileASCII("./cam_1_processed.pcd", cloud_2);
     pcl::io::savePCDFileASCII("./cam_2_transformed.pcd", transformedCloud);
 
 

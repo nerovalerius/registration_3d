@@ -53,18 +53,22 @@ int main (int argc, char** argv){
     }
 
 
-    // View the Cloud
-    
+
     // Create a PCLVisualizer object
     p = new pcl::visualization::PCLVisualizer ("Pairwise Incremental Registration example");
     p->createViewPort (0.0, 0, 0.5, 1.0, vp_1);
-    PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_tgt_h (target, 0, 255, 0);
-    PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_src_h (source, 255, 0, 0);
+    PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_tgt_h (target, 255, 255, 255);
+    PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_src_h (source, 255, 255, 255);
 
 
     p->createViewPort (0, 0, 1.0, 1.0, vp_1);
     p->addPointCloud (target, cloud_tgt_h, "target", vp_1);
     p->addPointCloud (source, cloud_src_h, "source", vp_1);
+
+
+    // Set point size bigger
+    p->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "target");
+    p->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "source");
 
     p->spin();
 
