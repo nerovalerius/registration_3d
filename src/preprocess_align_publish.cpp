@@ -390,8 +390,8 @@ void TransformationCalculator::RemoveOutliers()
   for (auto &cloud : clouds)
   {
     outlier_filter.setInputCloud(cloud);
-    outlier_filter.setMeanK(50);
-    outlier_filter.setStddevMulThresh(1.0);
+    outlier_filter.setMeanK(20);
+    outlier_filter.setStddevMulThresh(0.5);
     outlier_filter.filter(*cloud);
   }
 }
