@@ -18,7 +18,7 @@ This is a 1 second sequence of both 3D cameras in our laboratory.
 Use `rosbag play -l 3d_cams.bag` to loop the 3D camera topics endlessly, simulating our laboratory environment.
 A real camera is not needed in this case, and you can test everything.
 
-The rosbag was recorded with:
+The rosbag was recorded from both realsense-ros camera nodes with:
 ```sh
 rosbag record -a -x "(.*)/cam_1/infra1/(.*)|(.*)/cam_2/infra1/(.*)|(.*)/cam_1/infra2/(.*)|(.*)/cam_2/infra2/(.*)|(.*)/cam_1/color/(.*)|(.*)/cam_2/color/(.*)|(.*)/cam_1/depth/image_rect_raw(.*)|(.*)/cam_2/depth/image_rect_raw/(.*)" --duration=1 -O 3d_cams.bag
 ```
