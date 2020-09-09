@@ -10,6 +10,18 @@ on the two images. The resulting transformation is then applied via ros /tf topi
 
 Simply clone this git into your ros_workspace/src folder and build it with catkin_make.
 
+## Prerequisites
+Download the following rosbag file:
+https://drive.google.com/file/d/1eIEW_tNSs0p7Sgny7x9dS-HAtSRvAcDm/view?usp=sharing
+This is a 1 second sequence of both 3D cameras in our laboratory.
+
+Use `rosbag play -l 3d_cams.bag` to loop the 3D camera topics endlessly, simulating our laboratory environment.
+A real camera is not needed in this case, and you can test everything.
+
+The rosbag was recorded with:
+```sh
+rosbag record -a -x "(.*)/cam_1/infra1/(.*)|(.*)/cam_2/infra1/(.*)|(.*)/cam_1/infra2/(.*)|(.*)/cam_2/infra2/(.*)|(.*)/cam_1/color/(.*)|(.*)/cam_2/color/(.*)|(.*)/cam_1/depth/image_rect_raw(.*)|(.*)/cam_2/depth/image_rect_raw/(.*)" --duration=1 -O 3d_cams.bag
+```
 
 ## Fully automated start script
 This script starts both 3d cam nodes, aligns their pointclouds via rostopic tf, vizualises the result in rviz
@@ -27,22 +39,24 @@ This launch file starts preprocess_align_publish, which consists of the followin
 Arguments can also be added into the launch file.
 
 ## PREPROCESS_ALIGN_PUBLISH 
-example call: rosrun perception preprocess_align_publish catkinws/src/perception/pointcloud_samples/cam_1_optimal.pcd catkinws/src/perception/pointcloud_samples/cam_2_optimal.pcd manualalignment=true passthrough=true downsampling=true outlier=true displayresult=true mls=true algorithm=gicp publishtoros=true
+### Usage
+```sh
+rosrun regisration_3d preprocess_align_publish /cam_1/depth/color/points /cam_2/depth/color/points manualalignment=true passthrough=true downsampling=true outlier=true displayresult=true mls=true algorithm=gicp publishtoros=true
 
 This program is designed to:
- 1a. Read two pointclouds from ros PointCloud2 streams
- 1b. OR read two pointclouds from .pcd files
- 2. Downsample and filter both pointclouds
- 3. Smooth Surfaces and make a coarse alignment
- 4. Apply an alignment algorithm
- 5. Publish the Transformation Matrix to the ros /tf topic
- 6. Display the alignment result
+- 1a. Read two pointclouds from ros PointCloud2 streams
+- 1b. OR read two pointclouds from .pcd files
+- 2. Downsample and filter both pointclouds
+- 3. Smooth Surfaces and make a coarse alignment
+- 4. Apply an alignment algorithm
+- 5. Publish the Transformation Matrix to the ros /tf topic
+- 6. Display the alignment result
    
  ---------------------------------------------------------
- Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>
- OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>
- Usually: /cam_1/depth/color/points and /cam_2/depth/color/points
- This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
+- Arguments: <cam_1_pointcloud2_topic> <cam_2_pointcloud2_topic>
+- OR: <cam_1_pointcloud_file.pcd> <cam_2_pointcloud_file.pcd>
+- Usually: /cam_1/depth/color/points and /cam_2/depth/color/points
+- This program only reads the pointclouds and applies an ICP if you give no arguments but the topics or files
 
  ---------------------------------------------------------
  The following arguments activate the single steps:
