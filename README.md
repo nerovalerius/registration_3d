@@ -12,7 +12,7 @@ Simply clone this git into your ros_workspace/src folder and build it with catki
 
 ## Prerequisites
 Download the following rosbag file:
-https://drive.google.com/file/d/1eIEW_tNSs0p7Sgny7x9dS-HAtSRvAcDm/view?usp=sharing
+[Link](https://drive.google.com/file/d/1eIEW_tNSs0p7Sgny7x9dS-HAtSRvAcDm/view?usp=sharing)
 This is a 1 second sequence of both 3D cameras in our laboratory.
 
 Use `rosbag play -l 3d_cams.bag` to loop the 3D camera topics endlessly, simulating our laboratory environment.
